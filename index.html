@@ -350,7 +350,7 @@ function navegar(pagina){
   else if(pagina==='reporte')     { c.innerHTML=pgReporte(); rInit(); }
   else if(pagina==='processuais') { c.innerHTML=pgProcessuais(); prInit(); }
   else if(pagina==='biblioteca')  { c.innerHTML=pgBiblioteca(); bibInit(); }
-  else if(pagina==='respostas')   { c.innerHTML=pgRespostas(); }
+  else if(pagina==='respostas')   { c.innerHTML=pgRespostas(); rrInit(); }
   else if(pagina==='favoritos')   { c.innerHTML=pgFavoritos(); }
   else if(pagina==='rascunhos')   { c.innerHTML=pgRascunhos(); }
   window.scrollTo(0,0);
@@ -990,16 +990,15 @@ function pgRespostas(){
     '<div class="blocos">';
   RESPOSTAS.forEach(function(cat){
     html+='<div class="bloco" id="rr-'+cat.id+'">'+
-      '<div class="bloco-hdr" onclick="rrToggle(\"'+cat.id+'\")">'+
+      '<div class="bloco-hdr" onclick="rrToggle(this)">'+
       '<span style="font-size:18px;width:22px;text-align:center;flex-shrink:0">'+cat.ico+'</span>'+
       '<span class="btit">'+cat.titulo+'</span>'+
       '<span style="font-family:var(--mono);font-size:10px;color:var(--ink-4)">'+cat.msgs.length+' mensagens</span>'+
       '<span class="chev">▼</span></div>'+
       '<div class="opcoes" id="rro-'+cat.id+'" style="flex-direction:column;gap:6px">'+
       cat.msgs.map(function(msg){
-        return '<div style="background:var(--paper-2);border:1px solid var(--paper-3);border-radius:8px;'+
-          'padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:all .15s"'+
-          ' onclick="rrCopiar(this,\"'+esc(msg)+'\")">'+
+        return '<div class="rr-msg" data-msg="'+msg.replace(/"/g,'&quot;')+'" style="background:var(--paper-2);border:1px solid var(--paper-3);border-radius:8px;'+
+          'padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:all .15s">'+
           '<span style="font-size:13px;color:var(--ink-2);line-height:1.6">'+msg+'</span>'+
           '<span style="font-size:11px;color:var(--ink-4);flex-shrink:0;font-family:var(--mono);white-space:nowrap">copiar</span>'+
           '</div>';
@@ -1010,13 +1009,20 @@ function pgRespostas(){
   return html;
 }
 
-function rrToggle(id){
-  var bloco=document.getElementById('rr-'+id);
+function rrInit(){
+  document.getElementById('content').addEventListener('click', function(e){
+    var el=e.target.closest('.rr-msg');
+    if(el) rrCopiar(el);
+  });
+}
+
+function rrToggle(hdr){
+  var bloco=hdr.parentElement;
   if(bloco) bloco.classList.toggle('aberto');
 }
 
-function rrCopiar(el, msg){
-  var texto=msg.replace(/\n/g,'\n');
+function rrCopiar(el){
+  var texto=el.dataset.msg||'';
   navigator.clipboard.writeText(texto).then(function(){
     var span=el.querySelector('span:last-child');
     var orig=span.textContent;
@@ -1030,6 +1036,8 @@ function rrCopiar(el, msg){
     }, 2000);
   });
 }
+
+
 // ── BIBLIOTECA ────────────────────────────────────────
 var _bibCat=null, _bibQ='';
 
