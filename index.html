@@ -330,8 +330,6 @@ function esc(s){
 
 function fillD(tmpl, data){
   var r=String(tmpl);
-  // Interpretar \n literal como quebra de linha real
-  r=r.replace(/\\n/g,'\n');
   Object.keys(data).forEach(function(k){ r=r.split('{{'+k+'}}').join(data[k]); });
   return r;
 }
@@ -339,6 +337,38 @@ function fillD(tmpl, data){
 function guardarRascunho(titulo, texto, modulo){
   saveRasc(titulo, texto, modulo);
   toast('📝 Rascunho guardado');
+}
+
+// ── Memória de sessão ────────────────────────────────────
+function memSave(modulo){
+  var campos={
+    'proposta': ['p-nome','p-tipo','p-link','p-trat','p-canal'],
+    'reporte':  ['r-nome','r-trat','r-pc','r-os','r-desc'],
+    'processuais': ['i-pc','i-os','i-corpo','i-extra','c-nome','c-trat','c-corpo','c-extra']
+  };
+  var ids=campos[modulo]; if(!ids) return;
+  var data={};
+  ids.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) data[id]=el.value;
+  });
+  sessionStorage.setItem('clm_mem_'+modulo, JSON.stringify(data));
+}
+
+function memRestore(modulo){
+  var raw=sessionStorage.getItem('clm_mem_'+modulo);
+  if(!raw) return;
+  try{
+    var data=JSON.parse(raw);
+    Object.keys(data).forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.value=data[id];
+    });
+  }catch(e){}
+}
+
+function memClear(modulo){
+  sessionStorage.removeItem('clm_mem_'+modulo);
 }
 
 // ── Navegação ─────────────────────────────────────────
@@ -402,8 +432,10 @@ function getBVal(blocoId){
   if(!opts) return undefined;
   var ativo=opts.querySelector('.opc.av,.opc.aa');
   var liv=document.getElementById('l-'+blocoId);
+  // Campo livre tem prioridade — já tem o texto real sem encoding
   if(liv && liv.value.trim()) return liv.value.trim();
   if(ativo){
+    // Converter &#10; (HTML entity) para quebra de linha real — UMA vez aqui
     var val=ativo.dataset.v!==undefined ? ativo.dataset.v : null;
     if(val) val=val.replace(/&#10;/g,'\n');
     return val;
@@ -423,9 +455,9 @@ function resetBlocos(ids){
 }
 
 function triggerRender(){
-  if(document.getElementById('p-prev'))  pRender();
-  if(document.getElementById('r-prev'))  rRender();
-  if(document.getElementById('pr-prev')) prRender();
+  if(document.getElementById('p-prev'))  { pRender(); memSave('proposta'); }
+  if(document.getElementById('r-prev'))  { rRender(); memSave('reporte'); }
+  if(document.getElementById('pr-prev')) { prRender(); memSave('processuais'); }
 }
 
 function mkBloco(id, num, titulo, cor, opcs, semTxt, livrePH){
@@ -529,10 +561,19 @@ function pgProposta(){
     '</div></div>';
 }
 
-function pInit(){ _pCanal='email'; }
+function pInit(){
+  _pCanal='email';
+  memRestore('proposta');
+  var canal=document.getElementById('p-canal-mem');
+  // Restaurar canal se guardado
+  var raw=sessionStorage.getItem('clm_mem_proposta');
+  if(raw){ try{ var d=JSON.parse(raw); if(d['p-canal']) pCanal(d['p-canal']); }catch(e){} }
+  pRender();
+}
 
 function pCanal(c){
   _pCanal=c;
+  memSave('proposta');
   var e=document.getElementById('p-email'), w=document.getElementById('p-wapp');
   if(e) e.classList.toggle('sel',c==='email');
   if(w) w.classList.toggle('sel',c==='whatsapp');
@@ -584,6 +625,7 @@ function pGuardar(){
 function pReset(){
   ['p-nome','p-link','p-tipo'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
   var pt=document.getElementById('p-trat'); if(pt) pt.value='Sr.';
+  memClear('proposta');
   resetBlocos(['bp-1','bp-2','bp-3','bp-4']);
   var prev=document.getElementById('p-prev');
   if(prev) prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>';
@@ -671,6 +713,7 @@ function pgReporte(){
 
 function rInit(){
   _rAid=0; _rAssunto='';
+  memRestore('reporte');
   rRenderDests();
   rAddArt();
   document.removeEventListener('ctcActualizado', rRenderDests);
@@ -823,6 +866,7 @@ function rGuardar(){
 function rReset(){
   ['r-nome','r-pc','r-os','r-desc'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
   var rt=document.getElementById('r-trat'); if(rt) rt.value='Sr.';
+  memClear('reporte');
   ['rc-pc','rc-os'].forEach(function(id){ document.getElementById(id)?.classList.remove('tem'); });
   var arts=document.getElementById('r-arts'); if(arts) arts.innerHTML='';
   _rAid=0; _rAssunto='';
@@ -902,7 +946,11 @@ function pgProcessuais(){
     '</div></div>';
 }
 
-function prInit(){ _prDest='int'; }
+function prInit(){
+  _prDest='int';
+  memRestore('processuais');
+  setTimeout(function(){ prRender(); },0);
+}
 
 function prMudar(d){
   _prDest=d;
@@ -988,6 +1036,7 @@ function prGuardar(){
 function prReset(){
   ['i-pc','i-os','i-corpo','i-extra','c-nome','c-corpo','c-extra'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
   var ct=document.getElementById('c-trat'); if(ct) ct.value='Sr.';
+  memClear('processuais');
   ['irc-pc','irc-os'].forEach(function(id){ document.getElementById(id)?.classList.remove('tem'); });
   resetBlocos(['bi-1','bi-2','bi-3','bi-4','bi-5','bi-6','bi-7','bc-1','bc-2','bc-3','bc-4','bc-5','bc-6','bc-7']);
   var prev=document.getElementById('pr-prev');
