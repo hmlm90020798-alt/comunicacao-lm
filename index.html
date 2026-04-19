@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comunicação LM</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1c1917;--ink-2:#44403c;--ink-3:#78716c;--ink-4:#a8a29e;
+  --paper:#fafaf9;--paper-2:#f5f5f4;--paper-3:#e7e5e4;--paper-4:#d6d3d1;
+  --green:#2C5E1A;--green-mid:#4A8C2A;--green-pale:#f0f7eb;--green-brd:#c6e0b4;
+  --blue:#1e40af;--blue-pale:#eff6ff;--blue-brd:#bfdbfe;
+  --amber:#92400e;--amber-pale:#fffbeb;
+  --red:#b91c1c;--red-pale:#fef2f2;
+  --serif:'Fraunces',Georgia,serif;--sans:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:10px;--sh:0 1px 3px rgba(0,0,0,.07)
+}
+body{font-family:var(--sans);background:var(--paper-2);color:var(--ink);min-height:100vh;font-size:15px}
+.hdr{background:var(--paper);border-bottom:1px solid var(--paper-3);height:54px;display:flex;align-items:center;padding:0 24px;gap:12px;position:sticky;top:0;z-index:200;box-shadow:var(--sh)}
+.hdr-brand{font-family:var(--serif);font-size:19px;font-weight:600}
+.hdr-brand em{font-style:italic;font-weight:300;color:var(--green)}
+.hdr-tag{font-family:var(--mono);font-size:10px;color:var(--ink-4);letter-spacing:1.5px;text-transform:uppercase}
+.hdr-right{margin-left:auto;display:flex;gap:8px}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 54px)}
+.nav{background:var(--paper);border-right:1px solid var(--paper-3);padding:20px 0;position:sticky;top:54px;height:calc(100vh - 54px);overflow-y:auto}
+.nav-lbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-4);padding:0 16px;margin-bottom:6px;display:block}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-left:3px solid transparent;font-size:13px;color:var(--ink-2);transition:all .15s;user-select:none}
+.nav-item:hover{background:var(--paper-2);color:var(--ink)}
+.nav-item.ativo{background:var(--green-pale);border-left-color:var(--green);color:var(--green);font-weight:500}
+.nav-item-ico{font-size:15px;width:20px;text-align:center}
+.content{padding:28px 32px;overflow-y:auto}
+.page-eyebrow{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-4);margin-bottom:6px}
+.page-title{font-family:var(--serif);font-size:28px;font-weight:300;margin-bottom:4px}
+.page-title em{font-style:italic;color:var(--green)}
+.page-sub{font-size:13px;color:var(--ink-3);margin-bottom:24px}
+.sec-lbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--ink-4);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--paper-3)}
+.campo{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
+.campo-label{font-size:12px;font-weight:500;color:var(--ink-2)}
+.inp,.textarea{width:100%;background:var(--paper);border:1px solid var(--paper-3);border-radius:8px;padding:9px 12px;color:var(--ink);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .15s}
+.inp:focus,.textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(44,94,26,.07)}
+.inp::placeholder,.textarea::placeholder{color:var(--ink-4)}
+.textarea{resize:vertical;min-height:80px;line-height:1.6}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cstr{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 54px)}
+.cstr-esq{padding:24px 28px;border-right:1px solid var(--paper-3);overflow-y:auto}
+.cstr-dir{padding:24px 28px;background:var(--paper);position:sticky;top:54px;height:calc(100vh - 54px);display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.prev-lbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--ink-4);padding-bottom:5px;border-bottom:1px solid var(--paper-3)}
+.prev-box{flex:1;background:var(--paper-2);border:1px solid var(--paper-3);border-radius:var(--r);padding:16px;font-size:13px;color:var(--ink-2);line-height:1.9;white-space:pre-wrap;overflow-y:auto;min-height:160px}
+.ph{color:var(--ink-4);font-style:italic}
+.blocos{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.bloco{border:1.5px solid var(--paper-3);border-radius:var(--r);overflow:hidden;background:var(--paper);box-shadow:var(--sh);transition:border-color .15s}
+.bloco.sv{border-color:var(--green)}.bloco.sa{border-color:var(--blue)}
+.bloco-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none;transition:background .15s}
+.bloco-hdr:hover{background:var(--paper-2)}
+.bnum{width:22px;height:22px;border-radius:50%;background:var(--paper-3);color:var(--ink-3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.bloco.sv .bnum{background:var(--green);color:#fff}.bloco.sa .bnum{background:var(--blue);color:#fff}
+.btit{font-size:13px;font-weight:500;color:var(--ink-2);flex:1}
+.bloco.sv .btit,.bloco.sa .btit{color:var(--ink)}
+.bsel{font-size:11px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bloco.sv .bsel{color:var(--green)}.bloco.sa .bsel{color:var(--blue)}
+.chev{font-size:11px;color:var(--ink-4);transition:transform .2s;flex-shrink:0}
+.bloco.aberto .chev{transform:rotate(180deg)}
+.opcoes{display:none;border-top:1px solid var(--paper-3);padding:8px}
+.bloco.aberto .opcoes{display:block}
+.opc{padding:9px 12px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--ink-2);line-height:1.5;margin-bottom:3px;border:1.5px solid transparent;transition:all .12s}
+.opc:hover{background:var(--paper-2);border-color:var(--paper-3)}
+.opc.av{background:var(--green-pale);border-color:var(--green-brd);color:var(--green)}
+.opc.aa{background:var(--blue-pale);border-color:var(--blue-brd);color:var(--blue)}
+.opc-sem{font-style:italic;color:var(--ink-4)}
+.opc-livre{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:7px;border:1.5px dashed var(--paper-3);margin-bottom:3px;cursor:text;transition:border-color .12s}
+.opc-livre:focus-within{border-color:var(--green)}
+.opc-livre-inp{flex:1;border:none;background:transparent;font-family:var(--sans);font-size:13px;color:var(--ink-2);outline:none}
+.opc-livre-inp::placeholder{color:var(--ink-4);font-style:italic}
+.btn-bib{display:flex;align-items:center;gap:5px;padding:7px 10px;border-radius:7px;border:1px dashed var(--paper-4);background:none;font-family:var(--sans);font-size:12px;color:var(--ink-3);cursor:pointer;transition:all .15s;margin:4px 0 0;width:100%}
+.btn-bib:hover{border-color:var(--green-brd);color:var(--green);background:var(--green-pale)}
+.btn-p{padding:11px;color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;width:100%;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-p.v{background:var(--green)}.btn-p.v:hover{background:var(--green-mid)}
+.btn-p.a{background:var(--blue)}.btn-p.a:hover{background:#1e3a8a}
+.btn-p.am{background:#b45309}.btn-p.am:hover{background:#92400e}
+.btn-s{padding:9px;background:none;color:var(--ink-3);border:1px solid var(--paper-3);border-radius:8px;font-family:var(--sans);font-size:13px;cursor:pointer;width:100%;transition:all .15s}
+.btn-s:hover{color:var(--ink);border-color:var(--paper-4)}
+.btn-ic{padding:7px 10px;background:none;border:1px solid var(--paper-3);border-radius:7px;font-size:14px;cursor:pointer;transition:all .15s;color:var(--ink-3)}
+.btn-ic:hover{background:var(--amber-pale);border-color:#fcd34d;color:var(--amber)}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:32px}
+.hcard{background:var(--paper);border:1px solid var(--paper-3);border-radius:var(--r);padding:20px;cursor:pointer;transition:all .2s;box-shadow:var(--sh)}
+.hcard:hover{border-color:var(--green);transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.09)}
+.hcard-ico{font-size:28px;margin-bottom:12px}
+.hcard-titulo{font-size:15px;font-weight:500;color:var(--ink);margin-bottom:4px}
+.hcard-desc{font-size:13px;color:var(--ink-3);line-height:1.5}
+.hcard-arr{font-size:12px;color:var(--ink-4);margin-top:10px}
+.hcard:hover .hcard-arr{color:var(--green)}
+.refs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.ref-card{background:var(--paper);border:1px solid var(--paper-3);border-radius:8px;padding:10px 12px;transition:border-color .15s}
+.ref-card.tem{border-color:var(--green-brd);background:var(--green-pale)}
+.ref-badge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink-4);text-transform:uppercase;margin-bottom:3px}
+.ref-card.tem .ref-badge{color:var(--green)}
+.ref-desc{font-size:11px;color:var(--ink-4);margin-bottom:6px;line-height:1.4}
+.ref-inp{width:100%;border:none;border-bottom:1px solid var(--paper-3);background:transparent;padding:4px 0;color:var(--ink);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .15s}
+.ref-inp:focus{border-bottom-color:var(--green)}
+.ref-inp::placeholder{color:var(--ink-4)}
+.dest-wrap{background:var(--paper);border:1.5px solid var(--paper-3);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:20px}
+.dest-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--paper-2);border-bottom:1px solid var(--paper-3)}
+.dest-hdr-t{font-size:13px;font-weight:500;color:var(--ink)}
+.btn-gerir{font-size:12px;color:var(--green);background:none;border:none;cursor:pointer;font-family:var(--sans)}
+.btn-gerir:hover{text-decoration:underline}
+.dest-body{padding:10px}
+.dest-lista{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.dest-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--paper-2);border:1px solid var(--paper-3);border-radius:7px;transition:all .15s}
+.dest-item.sp{border-color:var(--green);background:var(--green-pale)}
+.dest-item.sc{border-color:#d97706;background:#fffbeb}
+.dest-check{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--paper-4);display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .15s;flex-shrink:0}
+.dest-item.sp .dest-check{background:var(--green);border-color:var(--green);color:#fff}
+.dest-item.sc .dest-check{background:#d97706;border-color:#d97706;color:#fff}
+.dest-info{flex:1}
+.dest-nome{font-size:13px;font-weight:500;color:var(--ink-2)}
+.dest-email{font-size:11px;color:var(--ink-4)}
+.dest-btns{display:flex;gap:4px}
+.dest-btn{font-size:11px;font-weight:500;padding:3px 8px;border-radius:5px;border:1px solid var(--paper-3);background:var(--paper);color:var(--ink-3);cursor:pointer;transition:all .12s}
+.dest-btn:hover{border-color:var(--green-brd);color:var(--green)}
+.dest-btn.ap{background:var(--green);color:#fff;border-color:var(--green)}
+.dest-btn.ac{background:#d97706;color:#fff;border-color:#d97706}
+.dest-acoes{display:flex;gap:6px}
+.btn-cd{flex:1;padding:7px 8px;border:1px solid var(--paper-3);border-radius:7px;background:var(--paper);font-family:var(--sans);font-size:12px;font-weight:500;color:var(--ink-2);cursor:pointer;transition:all .15s;text-align:center}
+.btn-cd:hover{background:var(--green-pale);border-color:var(--green-brd);color:var(--green)}
+.art-linha{display:grid;grid-template-columns:1fr 140px 32px;gap:8px;margin-bottom:8px;align-items:center}
+.btn-del{width:32px;height:32px;border-radius:7px;border:1px solid var(--paper-3);background:var(--paper);color:var(--ink-4);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.btn-del:hover{background:var(--red-pale);border-color:#fca5a5;color:var(--red)}
+.btn-add{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--green-pale);border:1.5px solid var(--green-brd);border-radius:7px;color:var(--green);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;margin-top:8px}
+.btn-add:hover{background:var(--green);color:#fff;border-color:var(--green)}
+.tabs-int{display:flex;border-bottom:1px solid var(--paper-3);margin-bottom:20px}
+.tab-int{padding:10px 18px;font-size:13px;font-weight:500;color:var(--ink-3);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;transition:all .15s;user-select:none}
+.tab-int:hover{color:var(--ink)}
+.tab-int.av{color:var(--green);border-bottom-color:var(--green)}
+.tab-int.aa{color:var(--blue);border-bottom-color:var(--blue)}
+.ptab{display:none}.ptab.vis{display:block}
+.canal-grid{display:flex;gap:8px;margin-bottom:16px}
+.canal-btn{flex:1;padding:9px;border:1.5px solid var(--paper-3);border-radius:8px;background:var(--paper);cursor:pointer;text-align:center;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink-2);transition:all .15s}
+.canal-btn.sel{border-color:var(--green);background:var(--green-pale);color:var(--green)}
+.bib-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.bib-sw{flex:1;position:relative}
+.bib-si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink-4);font-size:13px}
+.bib-inp{width:100%;background:var(--paper);border:1px solid var(--paper-3);border-radius:8px;padding:8px 12px 8px 32px;font-family:var(--sans);font-size:13px;color:var(--ink);outline:none;transition:border-color .15s}
+.bib-inp:focus{border-color:var(--green)}
+.bib-inp::placeholder{color:var(--ink-4)}
+.bib-count{font-family:var(--mono);font-size:11px;color:var(--ink-4);white-space:nowrap}
+.bib-cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.bib-cat{padding:5px 12px;border-radius:20px;border:1px solid var(--paper-3);background:var(--paper);font-family:var(--sans);font-size:12px;color:var(--ink-2);cursor:pointer;transition:all .15s}
+.bib-cat:hover{border-color:var(--green-brd);color:var(--green)}
+.bib-cat.at{background:var(--green);color:#fff;border-color:var(--green)}
+.bib-st{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-4);margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--paper-3)}
+.bib-fs{display:flex;flex-direction:column;gap:5px;margin-bottom:6px}
+.bib-f{background:var(--paper);border:1px solid var(--paper-3);border-radius:8px;padding:11px 12px;display:flex;align-items:flex-start;gap:8px;box-shadow:var(--sh)}
+.bib-f:hover{border-color:var(--green-brd)}
+.bib-ft{flex:1;font-size:13px;color:var(--ink-2);line-height:1.6;white-space:pre-line}
+.bib-fa{display:flex;gap:5px;flex-shrink:0}
+.btn-cb{padding:4px 10px;border-radius:6px;border:1px solid var(--paper-3);background:var(--paper-2);font-family:var(--sans);font-size:11px;color:var(--ink-3);cursor:pointer;transition:all .15s}
+.btn-cb:hover{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-fb{padding:4px 8px;border-radius:6px;border:1px solid var(--paper-3);background:var(--paper-2);font-size:12px;cursor:pointer;transition:all .15s}
+.btn-fb.at{background:var(--amber-pale);border-color:#fcd34d}
+.fav-grid{display:flex;flex-direction:column;gap:8px}
+.fav-card{background:var(--paper);border:1px solid var(--paper-3);border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;box-shadow:var(--sh)}
+.fav-body{flex:1}
+.fav-cat{font-family:var(--mono);font-size:10px;color:var(--ink-4);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.fav-txt{font-size:13px;color:var(--ink-2);line-height:1.6;white-space:pre-line}
+.rasc-card{background:var(--paper);border:1px solid var(--paper-3);border-radius:8px;padding:14px 16px;box-shadow:var(--sh);margin-bottom:10px}
+.rasc-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.rasc-titulo{font-size:14px;font-weight:500;color:var(--ink)}
+.rasc-data{font-family:var(--mono);font-size:11px;color:var(--ink-4)}
+.rasc-txt{font-size:13px;color:var(--ink-3);white-space:pre-line;max-height:80px;overflow:hidden}
+.rasc-acoes{display:flex;gap:6px;margin-top:10px}
+.btn-r{padding:5px 12px;border-radius:6px;border:1px solid var(--paper-3);background:var(--paper);font-family:var(--sans);font-size:12px;color:var(--ink-2);cursor:pointer;transition:all .15s}
+.btn-r.del:hover{background:var(--red-pale);border-color:#fca5a5;color:var(--red)}
+.empty{text-align:center;padding:48px 20px;color:var(--ink-4)}
+.empty-ico{font-size:36px;margin-bottom:12px}
+.empty-t{font-size:15px;font-weight:500;color:var(--ink-3);margin-bottom:6px}
+.empty-s{font-size:13px}
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:400;align-items:center;justify-content:center;padding:20px}
+.modal-ov.aberto{display:flex}
+.modal-box{background:var(--paper);border-radius:14px;width:100%;max-width:580px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden}
+.modal-hdr{display:flex;align-items:flex-start;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--paper-3)}
+.modal-titulo{font-size:15px;font-weight:500;color:var(--ink)}
+.modal-hint{font-size:11px;color:var(--ink-4);margin-top:2px}
+.modal-close{background:none;border:none;font-size:22px;color:var(--ink-3);cursor:pointer;line-height:1}
+.modal-cats{display:flex;gap:5px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--paper-3);background:var(--paper-2)}
+.modal-cat-pill{padding:4px 10px;border-radius:20px;border:1px solid var(--paper-3);background:var(--paper);font-family:var(--sans);font-size:11px;color:var(--ink-2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.modal-cat-pill:hover{border-color:var(--green-brd);color:var(--green)}
+.modal-cat-pill.at{background:var(--green);color:#fff;border-color:var(--green)}
+.modal-srch{padding:10px 14px;border-bottom:1px solid var(--paper-3)}
+.modal-si{width:100%;background:var(--paper-2);border:1px solid var(--paper-3);border-radius:8px;padding:8px 12px;font-family:var(--sans);font-size:13px;color:var(--ink);outline:none;transition:border-color .15s}
+.modal-si:focus{border-color:var(--green)}
+.modal-si::placeholder{color:var(--ink-4)}
+.modal-lista{overflow-y:auto;flex:1;padding:10px 14px;display:flex;flex-direction:column;gap:5px}
+.modal-frase{padding:10px 12px;background:var(--paper-2);border:1px solid var(--paper-3);border-radius:8px;font-size:13px;color:var(--ink-2);line-height:1.6;cursor:pointer;transition:all .15s;white-space:pre-line}
+.modal-frase:hover{border-color:var(--green-brd);background:var(--green-pale);color:var(--green)}
+.modal-ch{font-family:var(--mono);font-size:10px;color:var(--ink-4);text-transform:uppercase;letter-spacing:1px;padding:6px 0 4px;border-bottom:1px solid var(--paper-3);margin-bottom:5px}
+.modal-ctc{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:12px}
+.modal-ctc-inp{padding:8px 10px;border:1px solid var(--paper-3);border-radius:7px;font-family:var(--sans);font-size:13px;color:var(--ink);outline:none;background:var(--paper-2);transition:border-color .15s;width:100%}
+.modal-ctc-inp:focus{border-color:var(--green)}
+.modal-ctc-inp::placeholder{color:var(--ink-4)}
+.btn-add-ctc{padding:9px 14px;background:var(--green);color:#fff;border:none;border-radius:7px;font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.ctc-lista{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;max-height:200px;overflow-y:auto}
+.ctc-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--paper-2);border-radius:7px}
+.ctc-info{flex:1}
+.ctc-nome{font-size:13px;font-weight:500;color:var(--ink-2)}
+.ctc-email{font-size:11px;color:var(--ink-4)}
+.btn-dc{background:none;border:none;color:var(--ink-4);cursor:pointer;font-size:16px;transition:color .15s}
+.btn-dc:hover{color:var(--red)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;z-index:500;opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.nav{display:none}.cstr{grid-template-columns:1fr}.cstr-dir{position:static;height:auto}.grid-2,.refs-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-brand">Comunicação <em>LM</em></div>
+  <div class="hdr-tag">Hélder Melo · VPR</div>
+  <div class="hdr-right">
+    <button class="btn-ic" onclick="navegar('favoritos')" title="Favoritos">⭐</button>
+    <button class="btn-ic" onclick="navegar('rascunhos')" title="Rascunhos">📝</button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="nav">
+    <div style="margin-bottom:16px">
+      <span class="nav-lbl">Módulos</span>
+      <div class="nav-item ativo" data-p="home" onclick="navegar('home')"><span class="nav-item-ico">🏠</span> Início</div>
+      <div class="nav-item" data-p="proposta" onclick="navegar('proposta')"><span class="nav-item-ico">📩</span> Envio de Proposta</div>
+      <div class="nav-item" data-p="reporte" onclick="navegar('reporte')"><span class="nav-item-ico">⚠️</span> Reporte de Problema</div>
+      <div class="nav-item" data-p="processuais" onclick="navegar('processuais')"><span class="nav-item-ico">💬</span> Mensagens Processuais</div>
+      <div class="nav-item" data-p="biblioteca" onclick="navegar('biblioteca')"><span class="nav-item-ico">📚</span> Biblioteca de Frases</div>
+    </div>
+    <div>
+      <span class="nav-lbl">Guardado</span>
+      <div class="nav-item" data-p="favoritos" onclick="navegar('favoritos')"><span class="nav-item-ico">⭐</span> Favoritos</div>
+      <div class="nav-item" data-p="rascunhos" onclick="navegar('rascunhos')"><span class="nav-item-ico">📝</span> Rascunhos</div>
+    </div>
+  </nav>
+  <main class="content" id="content"></main>
+</div>
+
+<!-- Modal Biblioteca -->
+<div class="modal-ov" id="modal-bib">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div><div class="modal-titulo">Biblioteca de frases</div><div class="modal-hint" id="modal-hint"></div></div>
+      <button class="modal-close" onclick="modalBibFechar()">×</button>
+    </div>
+    <div class="modal-cats" id="modal-cats"></div>
+    <div class="modal-srch"><input class="modal-si" id="modal-search" placeholder="Pesquisar em toda a biblioteca..." oninput="modalBibFiltrar()"></div>
+    <div class="modal-lista" id="modal-lista"></div>
+  </div>
+</div>
+
+<!-- Modal Contactos -->
+<div class="modal-ov" id="modal-ctc">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div><div class="modal-titulo">Gerir contactos</div></div>
+      <button class="modal-close" onclick="modalCtcFechar()">×</button>
+    </div>
+    <div style="padding:16px 18px">
+      <div class="ctc-lista" id="ctc-lista"></div>
+      <div class="modal-ctc">
+        <input class="modal-ctc-inp" id="ctc-nome" placeholder="Nome">
+        <input class="modal-ctc-inp" id="ctc-email" placeholder="Email" onkeydown="if(event.key==='Enter')ctcAdicionar()">
+        <button class="btn-add-ctc" onclick="ctcAdicionar()">Adicionar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// COMUNICAÇÃO LM — Script completo inline
+// ═══════════════════════════════════════════════════════
+
+// ── Storage ──────────────────────────────────────────
+var LS_FAVS  = 'clm_favs';
+var LS_RASCS = 'clm_rascs';
+var LS_CTCS  = 'clm_ctcs';
+
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
+function lsSet(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+function getFavs(){ return lsGet(LS_FAVS); }
+function isFav(txt){ return getFavs().some(function(f){ return f.texto===txt; }); }
+function toggleFav(txt,cat){
+  var favs=getFavs(), idx=favs.findIndex(function(f){ return f.texto===txt; });
+  if(idx>=0){ favs.splice(idx,1); lsSet(LS_FAVS,favs); return false; }
+  favs.unshift({id:Date.now(),texto:txt,categoria:cat||'Geral',data:new Date().toLocaleDateString('pt-PT')});
+  lsSet(LS_FAVS,favs); return true;
+}
+function removeFav(id){ lsSet(LS_FAVS, getFavs().filter(function(f){ return f.id!==id; })); }
+
+function getRascs(){ return lsGet(LS_RASCS); }
+function saveRasc(titulo,texto,modulo){
+  var rascs=getRascs();
+  rascs.unshift({id:Date.now(),titulo:titulo||'Sem título',texto:texto,modulo:modulo,
+    data:new Date().toLocaleDateString('pt-PT'),hora:new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})});
+  lsSet(LS_RASCS, rascs.slice(0,50));
+}
+function removeRasc(id){ lsSet(LS_RASCS, getRascs().filter(function(r){ return r.id!==id; })); }
+
+function getCtcs(){ return lsGet(LS_CTCS); }
+function saveCtcs(v){ lsSet(LS_CTCS,v); }
+
+// ── Utilitários ───────────────────────────────────────
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+function esc(s){
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');
+}
+
+function fillD(tmpl, data){
+  var r=String(tmpl);
+  Object.keys(data).forEach(function(k){ r=r.split('{{'+k+'}}').join(data[k]); });
+  return r;
+}
+
+function guardarRascunho(titulo, texto, modulo){
+  saveRasc(titulo, texto, modulo);
+  toast('📝 Rascunho guardado');
+}
+
+// ── Navegação ─────────────────────────────────────────
+function navegar(pagina){
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    n.classList.toggle('ativo', n.dataset.p===pagina);
+  });
+  var c=document.getElementById('content');
+  if(pagina==='home')        { c.innerHTML=pgHome(); }
+  else if(pagina==='proposta')    { c.innerHTML=pgProposta(); pInit(); }
+  else if(pagina==='reporte')     { c.innerHTML=pgReporte(); rInit(); }
+  else if(pagina==='processuais') { c.innerHTML=pgProcessuais(); prInit(); }
+  else if(pagina==='biblioteca')  { c.innerHTML=pgBiblioteca(); bibInit(); }
+  else if(pagina==='favoritos')   { c.innerHTML=pgFavoritos(); }
+  else if(pagina==='rascunhos')   { c.innerHTML=pgRascunhos(); }
+  window.scrollTo(0,0);
+}
+
+// ── Blocos partilhados ────────────────────────────────
+function togBloco(id){
+  var el=document.getElementById(id);
+  if(el) el.classList.toggle('aberto');
+}
+
+function selOpc(blocoId, cor, el){
+  var opts=document.getElementById('o-'+blocoId);
+  if(opts) opts.querySelectorAll('.opc').forEach(function(o){ o.classList.remove('av','aa'); });
+  el.classList.add(cor==='a'?'aa':'av');
+  var bloco=document.getElementById(blocoId);
+  if(bloco){ bloco.classList.remove('aberto','sv','sa'); bloco.classList.add(cor==='a'?'sa':'sv'); }
+  var s=document.getElementById('s-'+blocoId);
+  if(s) s.textContent=el.classList.contains('opc-sem')?'(nenhum)':el.textContent.slice(0,28);
+  var liv=document.getElementById('l-'+blocoId);
+  if(liv) liv.value='';
+  triggerRender();
+}
+
+function livreOpc(blocoId, cor, inp){
+  var opts=document.getElementById('o-'+blocoId);
+  if(opts) opts.querySelectorAll('.opc').forEach(function(o){ o.classList.remove('av','aa'); });
+  var bloco=document.getElementById(blocoId);
+  var s=document.getElementById('s-'+blocoId);
+  if(inp.value.trim()){
+    if(bloco) bloco.classList.add(cor==='a'?'sa':'sv');
+    if(s) s.textContent=inp.value.slice(0,28);
+  } else {
+    if(bloco) bloco.classList.remove('sv','sa');
+    if(s) s.textContent='';
+  }
+  triggerRender();
+}
+
+function getBVal(blocoId){
+  var opts=document.getElementById('o-'+blocoId);
+  if(!opts) return undefined;
+  var ativo=opts.querySelector('.opc.av,.opc.aa');
+  if(ativo) return ativo.dataset.v!==undefined ? ativo.dataset.v : null;
+  var liv=document.getElementById('l-'+blocoId);
+  if(liv && liv.value.trim()) return liv.value.trim();
+  return undefined;
+}
+
+function resetBlocos(ids){
+  ids.forEach(function(id){
+    var opts=document.getElementById('o-'+id);
+    if(opts) opts.querySelectorAll('.opc').forEach(function(o){ o.classList.remove('av','aa'); });
+    var bloco=document.getElementById(id);
+    if(bloco) bloco.classList.remove('sv','sa','aberto');
+    var s=document.getElementById('s-'+id); if(s) s.textContent='';
+    var l=document.getElementById('l-'+id); if(l) l.value='';
+  });
+}
+
+function triggerRender(){
+  if(document.getElementById('p-prev'))  pRender();
+  if(document.getElementById('r-prev'))  rRender();
+  if(document.getElementById('pr-prev')) prRender();
+}
+
+function mkBloco(id, num, titulo, cor, opcs, semTxt, livrePH){
+  var opcsHtml=opcs.map(function(o){
+    return '<div class="opc" data-v="'+o[0].replace(/\n/g,'&#10;').replace(/'/g,'&#39;')+
+           '" onclick="selOpc(\''+id+'\',\''+cor+'\',this)">'+o[1]+'</div>';
+  }).join('');
+  return '<div class="bloco" id="'+id+'">'+
+    '<div class="bloco-hdr" onclick="togBloco(\''+id+'\')">'+
+    '<span class="bnum">'+num+'</span><span class="btit">'+titulo+'</span>'+
+    '<span class="bsel" id="s-'+id+'"></span><span class="chev">▼</span></div>'+
+    '<div class="opcoes" id="o-'+id+'">'+opcsHtml+
+    '<div class="opc opc-sem" data-v="" onclick="selOpc(\''+id+'\',\''+cor+'\',this)">'+(semTxt||'(nenhum)')+'</div>'+
+    '<div class="opc-livre" onclick="this.querySelector(\'input\').focus()">'+
+    '<input class="opc-livre-inp" id="l-'+id+'" placeholder="'+(livrePH||'Outro...')+'" oninput="livreOpc(\''+id+'\',\''+cor+'\',this)"></div>'+
+    '<button class="btn-bib" onclick="modalBibAbrir(\''+id+'\')">🔍 Pesquisar na biblioteca</button>'+
+    '</div></div>';
+}
+
+// ── HOMEPAGE ──────────────────────────────────────────
+function pgHome(){
+  return '<div class="page-eyebrow">Comunicação LM</div>'+
+    '<div class="page-title">Olá, <em>Hélder</em> 👋</div>'+
+    '<div class="page-sub">O teu assistente de comunicação profissional.</div>'+
+    '<div class="home-grid">'+
+    hcard('📩','Envio de Proposta','Constrói mensagens de envio de proposta por blocos.','proposta')+
+    hcard('⚠️','Reporte de Problema','Reporta situações com PC/OS, artigos e destinatários.','reporte')+
+    hcard('💬','Mensagens Processuais','Respostas internas e para clientes com biblioteca integrada.','processuais')+
+    hcard('📚','Biblioteca de Frases','+200 frases organizadas. Pesquisa, copia e favoritos.','biblioteca')+
+    hcard('⭐','Favoritos','As frases que guardaste para acesso rápido.','favoritos')+
+    hcard('📝','Rascunhos','Mensagens guardadas para continuar mais tarde.','rascunhos')+
+    '</div>';
+}
+function hcard(ico,titulo,desc,pagina){
+  return '<div class="hcard" onclick="navegar(\''+pagina+'\')">'+
+    '<div class="hcard-ico">'+ico+'</div>'+
+    '<div class="hcard-titulo">'+titulo+'</div>'+
+    '<div class="hcard-desc">'+desc+'</div>'+
+    '<div class="hcard-arr">Abrir →</div></div>';
+}
+
+// ── PROPOSTA ──────────────────────────────────────────
+var _pCanal='email';
+
+function pgProposta(){
+  return '<div class="page-eyebrow">Módulo</div>'+
+    '<div class="page-title">📩 Envio de <em>Proposta</em></div>'+
+    '<div class="page-sub">Constrói a mensagem de envio bloco a bloco.</div>'+
+    '<div class="cstr"><div class="cstr-esq">'+
+    '<div class="sec-lbl">Dados</div>'+
+    '<div class="grid-2" style="margin-bottom:14px">'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="p-nome" placeholder="Ex: Ana Silva" oninput="pRender()"></div>'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Tipo de projecto</label><input class="inp" id="p-tipo" placeholder="Ex: Cozinha" oninput="pRender()"></div></div>'+
+    '<div class="campo"><label class="campo-label">Link da proposta</label><input class="inp" id="p-link" placeholder="https://..." oninput="pRender()"></div>'+
+    '<div class="sec-lbl">Canal</div>'+
+    '<div class="canal-grid">'+
+    '<div class="canal-btn sel" id="p-email" onclick="pCanal(\'email\')">✉️ Email</div>'+
+    '<div class="canal-btn" id="p-wapp" onclick="pCanal(\'whatsapp\')">💬 WhatsApp</div></div>'+
+    '<div class="sec-lbl">Constrói a mensagem</div>'+
+    '<div class="blocos">'+
+    mkBloco('bp-1','1','Saudação','v',[
+      ['Bom dia {{NOME}},','Bom dia [nome],'],
+      ['Boa tarde {{NOME}},','Boa tarde [nome],'],
+      ['Olá {{NOME}}!','Olá [nome]!']
+    ],'(sem saudação)','Outra saudação...')+
+    mkBloco('bp-2','2','Abertura','v',[
+      ['Na sequência do que definimos em loja, partilho o link do projecto de {{TIPO}}: {{LINK}}','Na sequência do que definimos em loja...'],
+      ['O seu projecto de {{TIPO}} está pronto — pode ver aqui: {{LINK}}','O projecto está pronto — pode ver aqui'],
+      ['Partilho o link com o projecto de {{TIPO}} para sua análise: {{LINK}}','Partilho o link para sua análise'],
+      ['Segue o link do projecto: {{LINK}}','Segue o link do projecto']
+    ],'(sem abertura)','Outra abertura...')+
+    mkBloco('bp-3','3','Fecho','v',[
+      ['Se vir algum ponto a ajustar, diga-me.','Se vir algum ponto a ajustar, diga-me.'],
+      ['Se houver algum ponto a ajustar, não hesite em me contactar.','Não hesite em me contactar.'],
+      ['Fico a aguardar o seu feedback.','Fico a aguardar o seu feedback.'],
+      ['Preciso do seu feedback para conseguirmos avançar.','Preciso do seu feedback para avançar.'],
+      ['Diga-me se está de acordo ou o que pretende ajustar.','Diga-me se está de acordo.']
+    ],'(sem fecho)','Outro fecho...')+
+    mkBloco('bp-4','4','Despedida','v',[
+      ['Um abraço,\nHélder','Um abraço, Hélder'],
+      ['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos']
+    ],'(sem despedida)','Outra despedida...')+
+    '</div></div>'+
+    '<div class="cstr-dir">'+
+    '<div class="prev-lbl">Pré-visualização</div>'+
+    '<div class="prev-box" id="p-prev"><span class="ph">Selecciona os blocos para construir a mensagem.</span></div>'+
+    '<button class="btn-p v" onclick="pCopiarAssunto()">Copiar assunto</button>'+
+    '<button class="btn-p v" onclick="pCopiar()">Copiar mensagem</button>'+
+    '<button class="btn-p am" onclick="pGuardar()">📝 Guardar rascunho</button>'+
+    '<button class="btn-s" onclick="pReset()">↺ Recomeçar</button>'+
+    '</div></div>';
+}
+
+function pInit(){ _pCanal='email'; }
+
+function pCanal(c){
+  _pCanal=c;
+  var e=document.getElementById('p-email'), w=document.getElementById('p-wapp');
+  if(e) e.classList.toggle('sel',c==='email');
+  if(w) w.classList.toggle('sel',c==='whatsapp');
+  pRender();
+}
+
+function pRender(){
+  var nome=document.getElementById('p-nome')?.value.trim()||'';
+  var tipo=document.getElementById('p-tipo')?.value.trim()||'';
+  var link=document.getElementById('p-link')?.value.trim()||'';
+  var d={NOME:nome||'[nome]',TIPO:tipo||'[tipo]',LINK:link||'[link]'};
+  var b1=getBVal('bp-1'),b2=getBVal('bp-2'),b3=getBVal('bp-3'),b4=getBVal('bp-4');
+  var prev=document.getElementById('p-prev'); if(!prev) return;
+  if([b1,b2,b3,b4].every(function(v){ return v===undefined; })){
+    prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>'; return;
+  }
+  var sep=_pCanal==='email'?'\n\n':'\n';
+  var pp=[b1,b2,b3,b4].filter(function(v){ return v; }).map(function(v){ return fillD(v,d); });
+  prev.innerText=pp.join(sep);
+}
+
+function pCopiarAssunto(){
+  var nome=document.getElementById('p-nome')?.value.trim()||'[nome]';
+  var tipo=document.getElementById('p-tipo')?.value.trim()||'[tipo]';
+  navigator.clipboard.writeText('Proposta '+tipo+' — '+nome).then(function(){ toast('Assunto copiado!'); });
+}
+
+function pCopiar(){
+  var txt=document.getElementById('p-prev')?.innerText;
+  if(!txt||txt.includes('Selecciona')) return;
+  navigator.clipboard.writeText(txt).then(function(){ toast('✓ Mensagem copiada!'); });
+}
+
+function pGuardar(){
+  var txt=document.getElementById('p-prev')?.innerText;
+  if(!txt||txt.includes('Selecciona')){ toast('Nada para guardar'); return; }
+  var nome=document.getElementById('p-nome')?.value.trim()||'';
+  guardarRascunho('Proposta'+(nome?' — '+nome:''), txt, 'proposta');
+}
+
+function pReset(){
+  ['p-nome','p-link','p-tipo'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  resetBlocos(['bp-1','bp-2','bp-3','bp-4']);
+  var prev=document.getElementById('p-prev');
+  if(prev) prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>';
+}
+
+// ── REPORTE ───────────────────────────────────────────
+var _rAid=0, _rAssunto='';
+
+function pgReporte(){
+  return '<div class="page-eyebrow">Módulo</div>'+
+    '<div class="page-title">⚠️ Reporte de <em>Problema</em></div>'+
+    '<div class="page-sub">Reporta situações aos colegas com PC/OS, artigos e destinatários.</div>'+
+    '<div class="cstr"><div class="cstr-esq">'+
+    '<div class="sec-lbl">Dados do cliente</div>'+
+    '<div class="campo"><label class="campo-label">Nome do cliente</label><input class="inp" id="r-nome" placeholder="Ex: Sr. Marco" oninput="rRender()"></div>'+
+    '<div class="sec-lbl">Referências</div>'+
+    '<div class="refs-grid">'+
+    '<div class="ref-card" id="rc-pc"><div class="ref-badge">PC · Projecto</div><div class="ref-desc">Identifica artigos e materiais</div><input class="ref-inp" id="r-pc" placeholder="Ex: 200153" oninput="rRefCard(\'pc\');rRender()"></div>'+
+    '<div class="ref-card" id="rc-os"><div class="ref-badge">OS · Ordem de Serviço</div><div class="ref-desc">Identifica prestação de serviço técnico</div><input class="ref-inp" id="r-os" placeholder="Ex: 562232" oninput="rRefCard(\'os\');rRender()"></div>'+
+    '</div>'+
+    '<div class="sec-lbl" style="margin-top:4px">Destinatários</div>'+
+    '<div class="dest-wrap">'+
+    '<div class="dest-hdr"><div class="dest-hdr-t">Selecciona os destinatários</div><button class="btn-gerir" onclick="modalCtcAbrir()">Gerir contactos</button></div>'+
+    '<div class="dest-body"><div class="dest-lista" id="r-dest-lista"></div>'+
+    '<div class="dest-acoes"><button class="btn-cd" onclick="rCopiarDest(\'para\')">Copiar Para:</button><button class="btn-cd" onclick="rCopiarDest(\'cc\')">Copiar CC:</button></div></div></div>'+
+    '<div class="sec-lbl">Constrói a mensagem</div><div class="blocos">'+
+    mkBloco('rb-1','1','Saudação','v',[
+      ['Bom dia,','Bom dia,'],['Boa tarde,','Boa tarde,'],['Colegas,','Colegas,']
+    ],'(sem saudação)','Outra saudação...')+
+    mkBloco('rb-2','2','Origem do problema','v',[
+      ['Na sequência de uma reclamação do cliente {{NOME}}{{REFS}}, venho reportar a seguinte situação:','Na sequência de uma reclamação do cliente...'],
+      ['O técnico reportou-me a seguinte situação na obra do cliente {{NOME}}{{REFS}}:','O técnico reportou a seguinte situação...'],
+      ['Na sequência de uma visita à obra do cliente {{NOME}}{{REFS}}, identifiquei os seguintes problemas:','Na sequência de uma visita à obra...'],
+      ['O cliente {{NOME}}{{REFS}} manifestou insatisfação com a sua obra. Venho reportar a situação:','O cliente manifestou insatisfação...']
+    ],'(sem origem)','Outra origem...')+
+    '</div>'+
+    '<div class="sec-lbl">Descrição do problema</div>'+
+    '<div class="campo"><textarea class="textarea" id="r-desc" placeholder="Descreve o problema..." oninput="rRender()" rows="4"></textarea></div>'+
+    '<div class="sec-lbl">Artigos envolvidos</div>'+
+    '<div style="background:var(--paper);border:1.5px solid var(--paper-3);border-radius:var(--r);padding:12px;margin-bottom:16px;box-shadow:var(--sh)">'+
+    '<div id="r-arts"></div><button class="btn-add" onclick="rAddArt()">+ Artigo</button></div>'+
+    '<div class="blocos">'+
+    mkBloco('rb-3','3','O que precisas dos colegas','v',[
+      ['Solicito a vossa indicação dos próximos passos e prazo para que possa informar o cliente.','Solicito indicação dos próximos passos e prazo.'],
+      ['Solicito o vosso apoio para resolver a situação o mais rapidamente possível.','Solicito apoio para resolver a situação.'],
+      ['Aguardo a vossa posição para poder dar feedback ao cliente com brevidade.','Aguardo posição para dar feedback ao cliente.'],
+      ['Solicito autorização e indicação de como proceder para resolver esta situação.','Solicito autorização para proceder.'],
+      ['Estou disponível para reunião presencial para alinhamento desta situação.','Disponível para reunião presencial.']
+    ],'(sem pedido)','Outro pedido...')+
+    mkBloco('rb-4','4','Despedida','v',[
+      ['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],
+      ['Obrigado pela atenção,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],
+      ['Obrigado pela colaboração,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração']
+    ],'(sem despedida)','Outra despedida...')+
+    '</div></div>'+
+    '<div class="cstr-dir">'+
+    '<div class="prev-lbl">Pré-visualização</div>'+
+    '<div class="prev-box" id="r-prev"><span class="ph">Preenche os dados e selecciona os blocos.</span></div>'+
+    '<button class="btn-p v" onclick="rCopiarAssunto()">Copiar assunto</button>'+
+    '<button class="btn-p v" onclick="rCopiar()">Copiar mensagem</button>'+
+    '<button class="btn-p am" onclick="rGuardar()">📝 Guardar rascunho</button>'+
+    '<button class="btn-s" onclick="rReset()">↺ Recomeçar</button>'+
+    '</div></div>';
+}
+
+function rInit(){
+  _rAid=0; _rAssunto='';
+  rRenderDests();
+  rAddArt();
+  document.removeEventListener('ctcActualizado', rRenderDests);
+  document.addEventListener('ctcActualizado', rRenderDests);
+}
+
+function rRefCard(tipo){
+  var val=document.getElementById('r-'+tipo)?.value.trim();
+  document.getElementById('rc-'+tipo)?.classList.toggle('tem',!!val);
+}
+
+function rGetRefs(){
+  var pc=document.getElementById('r-pc')?.value.trim()||'';
+  var os=document.getElementById('r-os')?.value.trim()||'';
+  var p=[];
+  if(pc) p.push('PC '+pc);
+  if(os) p.push('OS '+os);
+  return {str: p.length?' ('+p.join(' · ')+')':'', arr:p};
+}
+
+function rAddArt(){
+  var id=++_rAid;
+  var lista=document.getElementById('r-arts'); if(!lista) return;
+  var d=document.createElement('div');
+  d.className='art-linha'; d.id='art-'+id;
+  d.innerHTML='<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Descrição do artigo" oninput="rRender()">'+
+    '<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Referência" oninput="rRender()">'+
+    '<button class="btn-del" onclick="document.getElementById(\'art-'+id+'\').remove();rRender()">×</button>';
+  lista.appendChild(d);
+}
+
+function rRenderDests(){
+  var ctcs=getCtcs();
+  var el=document.getElementById('r-dest-lista'); if(!el) return;
+  if(!ctcs.length){
+    el.innerHTML='<p style="font-size:12px;color:var(--ink-4);font-style:italic">Sem contactos. Clica em "Gerir contactos".</p>';
+    return;
+  }
+  el.innerHTML=ctcs.map(function(c){
+    return '<div class="dest-item" id="di-'+c.id+'">'+
+      '<div class="dest-check" id="dc-'+c.id+'"></div>'+
+      '<div class="dest-info"><div class="dest-nome">'+c.nome+'</div><div class="dest-email">'+c.email+'</div></div>'+
+      '<div class="dest-btns">'+
+      '<button class="dest-btn" id="dp-'+c.id+'" onclick="rSelDest('+c.id+',\'para\')">Para</button>'+
+      '<button class="dest-btn" id="dcc-'+c.id+'" onclick="rSelDest('+c.id+',\'cc\')">CC</button>'+
+      '</div></div>';
+  }).join('');
+}
+
+function rSelDest(id, tipo){
+  var item=document.getElementById('di-'+id);
+  var check=document.getElementById('dc-'+id);
+  var bp=document.getElementById('dp-'+id);
+  var bc=document.getElementById('dcc-'+id);
+  if(!item) return;
+  var jaEste=item.classList.contains(tipo==='para'?'sp':'sc');
+  item.classList.remove('sp','sc');
+  if(check) check.textContent='';
+  if(bp) bp.classList.remove('ap');
+  if(bc) bc.classList.remove('ac');
+  if(!jaEste){
+    item.classList.add(tipo==='para'?'sp':'sc');
+    if(check) check.textContent='✓';
+    if(tipo==='para'&&bp) bp.classList.add('ap');
+    else if(bc) bc.classList.add('ac');
+  }
+}
+
+function rCopiarDest(tipo){
+  var ctcs=getCtcs();
+  var cls=tipo==='para'?'sp':'sc';
+  var emails=ctcs.filter(function(c){ return document.getElementById('di-'+c.id)?.classList.contains(cls); }).map(function(c){ return c.email; });
+  if(!emails.length){ toast('Nenhum seleccionado'); return; }
+  navigator.clipboard.writeText(emails.join('; ')).then(function(){ toast('Emails copiados!'); });
+}
+
+function rRender(){
+  var nome=document.getElementById('r-nome')?.value.trim()||'';
+  var desc=document.getElementById('r-desc')?.value.trim()||'';
+  var refs=rGetRefs();
+  var d={NOME:nome||'[nome]',REFS:refs.str};
+  var b1=getBVal('rb-1'),b2=getBVal('rb-2'),b3=getBVal('rb-3'),b4=getBVal('rb-4');
+  var arts=[];
+  document.querySelectorAll('.art-linha').forEach(function(l){
+    var d2=l.querySelectorAll('input')[0]?.value.trim();
+    var r=l.querySelectorAll('input')[1]?.value.trim();
+    if(d2||r) arts.push({desc:d2||'[descrição]',ref:r||'[ref]'});
+  });
+  var prev=document.getElementById('r-prev'); if(!prev) return;
+  var temAlgo=[b1,b2,b3,b4].some(function(v){ return v!==undefined; })||desc||arts.length||refs.arr.length;
+  if(!temAlgo){ prev.innerHTML='<span class="ph">Preenche os dados e selecciona os blocos.</span>'; return; }
+  _rAssunto='Situação em obra — '+(nome||'[nome]')+(refs.arr.length?' · '+refs.arr.join(' · '):'');
+  var pp=[];
+  if(b1) pp.push(fillD(b1,d));
+  if(b2) pp.push(fillD(b2,d));
+  if(desc) pp.push(desc);
+  if(arts.length) pp.push('Artigos envolvidos:\n'+arts.map(function(a){ return '— '+a.desc+' · Ref: '+a.ref; }).join('\n'));
+  if(b3) pp.push(b3);
+  if(b4) pp.push(fillD(b4,d));
+  var aHTML='<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--paper-3)">'+
+    '<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-4);margin-bottom:3px">Assunto</div>'+
+    '<div style="font-size:13px;font-weight:500;color:var(--ink)">'+_rAssunto+'</div></div>';
+  prev.innerHTML=aHTML+'<span style="white-space:pre-wrap">'+pp.filter(Boolean).join('\n\n')+'</span>';
+}
+
+function rCopiarAssunto(){
+  if(!_rAssunto) return;
+  navigator.clipboard.writeText(_rAssunto).then(function(){ toast('Assunto copiado!'); });
+}
+
+function rCopiar(){
+  var nome=document.getElementById('r-nome')?.value.trim()||'';
+  var desc=document.getElementById('r-desc')?.value.trim()||'';
+  var refs=rGetRefs();
+  var d={NOME:nome||'[nome]',REFS:refs.str};
+  var b1=getBVal('rb-1'),b2=getBVal('rb-2'),b3=getBVal('rb-3'),b4=getBVal('rb-4');
+  var arts=[];
+  document.querySelectorAll('.art-linha').forEach(function(l){
+    var d2=l.querySelectorAll('input')[0]?.value.trim();
+    var r=l.querySelectorAll('input')[1]?.value.trim();
+    if(d2||r) arts.push({desc:d2||'[descrição]',ref:r||'[ref]'});
+  });
+  var pp=[];
+  if(b1) pp.push(fillD(b1,d));
+  if(b2) pp.push(fillD(b2,d));
+  if(desc) pp.push(desc);
+  if(arts.length) pp.push('Artigos envolvidos:\n'+arts.map(function(a){ return '— '+a.desc+' · Ref: '+a.ref; }).join('\n'));
+  if(b3) pp.push(b3);
+  if(b4) pp.push(fillD(b4,d));
+  if(!pp.length){ toast('Nada para copiar'); return; }
+  navigator.clipboard.writeText(pp.join('\n\n')).then(function(){ toast('✓ Mensagem copiada!'); });
+}
+
+function rGuardar(){
+  var txt=document.getElementById('r-prev')?.innerText;
+  if(!txt||txt.includes('Preenche')){ toast('Nada para guardar'); return; }
+  var nome=document.getElementById('r-nome')?.value.trim()||'';
+  guardarRascunho('Reporte'+(nome?' — '+nome:''), txt, 'reporte');
+}
+
+function rReset(){
+  ['r-nome','r-pc','r-os','r-desc'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  ['rc-pc','rc-os'].forEach(function(id){ document.getElementById(id)?.classList.remove('tem'); });
+  var arts=document.getElementById('r-arts'); if(arts) arts.innerHTML='';
+  _rAid=0; _rAssunto='';
+  resetBlocos(['rb-1','rb-2','rb-3','rb-4']);
+  rAddArt(); rRenderDests();
+  var prev=document.getElementById('r-prev');
+  if(prev) prev.innerHTML='<span class="ph">Preenche os dados e selecciona os blocos.</span>';
+}
+
+// ── PROCESSUAIS ───────────────────────────────────────
+var _prDest='int';
+
+function pgProcessuais(){
+  return '<div class="page-eyebrow">Módulo</div>'+
+    '<div class="page-title">💬 Mensagens <em>Processuais</em></div>'+
+    '<div class="page-sub">Respostas internas e para clientes com biblioteca de frases integrada.</div>'+
+    '<div class="tabs-int">'+
+    '<div class="tab-int aa" id="tab-pint" onclick="prMudar(\'int\')">👥 Mensagem Interna</div>'+
+    '<div class="tab-int" id="tab-pcli" onclick="prMudar(\'cli\')">🙋 Mensagem para Cliente</div></div>'+
+    '<div class="cstr"><div class="cstr-esq">'+
+    // Painel Interno
+    '<div id="pr-int">'+
+    '<div class="sec-lbl">Referência</div>'+
+    '<div class="refs-grid">'+
+    '<div class="ref-card" id="irc-pc"><div class="ref-badge">PC · Projecto</div><div class="ref-desc">Identifica artigos e materiais</div><input class="ref-inp" id="i-pc" placeholder="Ex: 200153" oninput="prRefCard(\'pc\');prRender()"></div>'+
+    '<div class="ref-card" id="irc-os"><div class="ref-badge">OS · Ordem de Serviço</div><div class="ref-desc">Identifica prestação de serviço técnico</div><input class="ref-inp" id="i-os" placeholder="Ex: 562232" oninput="prRefCard(\'os\');prRender()"></div>'+
+    '</div>'+
+    '<div class="sec-lbl" style="margin-top:4px">Constrói a mensagem</div>'+
+    '<div class="blocos">'+
+    mkBloco('bi-1','1','Saudação','a',[['Bom dia,','Bom dia,'],['Boa tarde,','Boa tarde,'],['Colegas,','Colegas,'],['Exmos. Senhores,','Exmos. Senhores,']],'(sem saudação)','Outra saudação...')+
+    mkBloco('bi-2','2','Desculpas (opcional)','a',[['Peço desculpa pela demora em dar feedback.','Peço desculpa pela demora em dar feedback.'],['Peço desculpa pela demora em responder.','Peço desculpa pela demora em responder.'],['Lamento o atraso na comunicação.','Lamento o atraso na comunicação.'],['Peço desculpa por só agora dar resposta.','Peço desculpa por só agora dar resposta.']],'(sem desculpas)','Outra desculpa...')+
+    mkBloco('bi-3','3','Referência ao assunto','a',[['Na sequência do vosso pedido,','Na sequência do vosso pedido,'],['Em resposta à vossa questão,','Em resposta à vossa questão,'],['Relativamente ao {{REF}},','Relativamente ao PC/OS,'],['Conforme ficou definido,','Conforme ficou definido,'],['Na sequência da nossa conversa,','Na sequência da nossa conversa,'],['Para vosso conhecimento,','Para vosso conhecimento,'],['A título informativo,','A título informativo,']],'(sem referência)','Outra referência...')+
+    '</div>'+
+    '<div class="sec-lbl">Corpo da mensagem</div>'+
+    '<div class="campo"><textarea class="textarea" id="i-corpo" placeholder="Escreve aqui o essencial..." oninput="prRender()" rows="4"></textarea></div>'+
+    '<div class="campo"><textarea class="textarea" id="i-extra" placeholder="Parágrafo adicional (opcional)..." oninput="prRender()" rows="2"></textarea></div>'+
+    '<div class="blocos">'+
+    mkBloco('bi-4','4','Estado do processo','a',[['Confirmo que o processo foi aceite e registado.','Confirmo que foi aceite e registado.'],['Confirmo que o processo foi registado com {{REF}}.','Confirmo que foi registado com PC/OS.'],['Já dei andamento a esta situação.','Já dei andamento a esta situação.'],['A situação está a ser tratada com prioridade.','A situação está a ser tratada com prioridade.'],['O processo está pendente de aprovação interna.','Pendente de aprovação interna.'],['O processo foi encerrado com sucesso.','Processo encerrado com sucesso.']],'(sem estado)','Outro estado...')+
+    mkBloco('bi-5','5','Próximo passo / Prazo','a',[['Assim que tiver novidades informo de imediato.','Informo assim que tiver novidades.'],['Aguardo a vossa resposta com brevidade.','Aguardo resposta com brevidade.'],['Dou feedback logo que possível.','Dou feedback logo que possível.'],['Ficamos a aguardar a vossa confirmação.','Aguardamos a vossa confirmação.'],['Solicito resposta até ao final do dia.','Solicito resposta até final do dia.']],'(sem prazo)','Outro prazo...')+
+    mkBloco('bi-6','6','Disponibilidade','a',[['Estou disponível para qualquer esclarecimento.','Disponível para qualquer esclarecimento.'],['Podem contar comigo para o que precisarem.','Podem contar comigo.'],['Qualquer dúvida é só dizer.','Qualquer dúvida é só dizer.'],['Estou a acompanhar a situação de perto.','Estou a acompanhar de perto.']],'(sem disponibilidade)','Outra disponibilidade...')+
+    mkBloco('bi-7','7','Despedida','a',[['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Obrigado pela atenção,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],['Obrigado pela colaboração,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração'],['Um abraço,\nHélder','Um abraço, Hélder']],'(sem despedida)','Outra despedida...')+
+    '</div></div>'+
+    // Painel Cliente
+    '<div id="pr-cli" style="display:none">'+
+    '<div class="sec-lbl">Dados</div>'+
+    '<div class="campo"><label class="campo-label">Nome do cliente</label><input class="inp" id="c-nome" placeholder="Ex: Dª Ana" oninput="prRender()"></div>'+
+    '<div class="sec-lbl">Constrói a mensagem</div>'+
+    '<div class="blocos">'+
+    mkBloco('bc-1','1','Saudação','v',[['Bom dia {{NOME}},','Bom dia [nome],'],['Boa tarde {{NOME}},','Boa tarde [nome],'],['Olá {{NOME}}!','Olá [nome]!'],['Exmo. Sr. {{NOME}},','Exmo. Sr. [nome],'],['Exma. Sra. {{NOME}},','Exma. Sra. [nome],']],'(sem saudação)','Outra saudação...')+
+    mkBloco('bc-2','2','Desculpas (opcional)','v',[['Peço desculpa pela demora em dar notícias.','Peço desculpa pela demora em dar notícias.'],['Lamento o transtorno causado por esta situação.','Lamento o transtorno causado.'],['Peço desculpa pela situação — não é o que pretendemos.','Peço desculpa — não é o que pretendemos.'],['Compreendo a sua insatisfação e asseguro que estamos a resolver.','Compreendo a sua insatisfação.'],['Lamento que a situação não tenha correspondido às suas expectativas.','Lamento que não correspondeu às expectativas.']],'(sem desculpas)','Outra desculpa...')+
+    mkBloco('bc-3','3','Referência ao assunto','v',[['Na sequência do nosso contacto,','Na sequência do nosso contacto,'],['Em resposta à sua questão,','Em resposta à sua questão,'],['Relativamente ao seu projecto,','Relativamente ao seu projecto,'],['Conforme ficou acordado,','Conforme ficou acordado,'],['Na sequência da nossa conversa em loja,','Na sequência da nossa conversa em loja,'],['Quero dar-lhe uma actualização sobre a sua situação.','Quero dar-lhe uma actualização.'],['Conforme combinado,','Conforme combinado,']],'(sem referência)','Outra referência...')+
+    '</div>'+
+    '<div class="sec-lbl">Corpo da mensagem</div>'+
+    '<div class="campo"><textarea class="textarea" id="c-corpo" placeholder="Escreve aqui o essencial..." oninput="prRender()" rows="4"></textarea></div>'+
+    '<div class="campo"><textarea class="textarea" id="c-extra" placeholder="Parágrafo adicional (opcional)..." oninput="prRender()" rows="2"></textarea></div>'+
+    '<div class="blocos">'+
+    mkBloco('bc-4','4','Próximo passo / Prazo','v',[['Assim que tiver novidades entro em contacto de imediato.','Entro em contacto assim que tiver novidades.'],['Dou-lhe feedback logo que possível.','Dou-lhe feedback logo que possível.'],['Ficamos a aguardar a sua confirmação para avançar.','Aguardamos a sua confirmação.'],['Pode contar com uma resposta ainda hoje.','Pode contar com resposta ainda hoje.']],'(sem prazo)','Outro prazo...')+
+    mkBloco('bc-5','5','Disponibilidade','v',[['Estou disponível para qualquer dúvida ou esclarecimento.','Disponível para qualquer dúvida.'],['Pode contar comigo para o que precisar.','Pode contar comigo.'],['Qualquer dúvida ou ajuste, é só dizer.','Qualquer dúvida ou ajuste, é só dizer.'],['Se vir algum ponto a ajustar, diga-me.','Se vir algum ponto a ajustar, diga-me.']],'(sem disponibilidade)','Outra disponibilidade...')+
+    mkBloco('bc-6','6','Agradecimento (opcional)','v',[['Obrigado pela sua compreensão.','Obrigado pela sua compreensão.'],['Obrigado pela sua paciência.','Obrigado pela sua paciência.'],['Obrigado pela confiança depositada.','Obrigado pela confiança depositada.']],'(sem agradecimento)','Outro agradecimento...')+
+    mkBloco('bc-7','7','Despedida','v',[['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Um abraço,\nHélder','Um abraço, Hélder'],['Até breve,\nHélder','Até breve, Hélder'],['Com estima,\nHélder Melo | VPR · Leroy Merlin','Com estima']],'(sem despedida)','Outra despedida...')+
+    '</div></div>'+
+    '</div>'+
+    '<div class="cstr-dir">'+
+    '<div class="prev-lbl">Pré-visualização</div>'+
+    '<div class="prev-box" id="pr-prev"><span class="ph">Selecciona os blocos para construir a mensagem.</span></div>'+
+    '<button class="btn-p a" id="pr-btn-cop" onclick="prCopiar()">Copiar mensagem</button>'+
+    '<button class="btn-p am" onclick="prGuardar()">📝 Guardar rascunho</button>'+
+    '<button class="btn-s" onclick="prReset()">↺ Recomeçar</button>'+
+    '</div></div>';
+}
+
+function prInit(){ _prDest='int'; }
+
+function prMudar(d){
+  _prDest=d;
+  var pi=document.getElementById('pr-int'), pc=document.getElementById('pr-cli');
+  var ti=document.getElementById('tab-pint'), tc=document.getElementById('tab-pcli');
+  var btn=document.getElementById('pr-btn-cop');
+  if(pi) pi.style.display=d==='int'?'block':'none';
+  if(pc) pc.style.display=d==='cli'?'block':'none';
+  if(ti) ti.className='tab-int'+(d==='int'?' aa':'');
+  if(tc) tc.className='tab-int'+(d==='cli'?' av':'');
+  if(btn) btn.className='btn-p '+(d==='int'?'a':'v');
+  prRender();
+}
+
+function prRefCard(tipo){
+  var val=document.getElementById('i-'+tipo)?.value.trim();
+  document.getElementById('irc-'+tipo)?.classList.toggle('tem',!!val);
+}
+
+function prRender(){
+  var prev=document.getElementById('pr-prev'); if(!prev) return;
+  var pp=[];
+  if(_prDest==='int'){
+    var pc=document.getElementById('i-pc')?.value.trim()||'';
+    var os=document.getElementById('i-os')?.value.trim()||'';
+    var corpo=document.getElementById('i-corpo')?.value.trim()||'';
+    var extra=document.getElementById('i-extra')?.value.trim()||'';
+    var rp=[]; if(pc) rp.push('PC '+pc); if(os) rp.push('OS '+os);
+    var refs=rp.join(' · ');
+    var d={REF:refs||'[PC/OS]'};
+    var b1=getBVal('bi-1'),b2=getBVal('bi-2'),b3=getBVal('bi-3'),b4=getBVal('bi-4'),b5=getBVal('bi-5'),b6=getBVal('bi-6'),b7=getBVal('bi-7');
+    var temAlgo=[b1,b2,b3,b4,b5,b6,b7].some(function(v){ return v!==undefined; })||corpo||refs;
+    if(!temAlgo){ prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>'; return; }
+    if(b1) pp.push(b1);
+    if(b2) pp.push(b2);
+    if(b3){ pp.push(fillD(b3,d)); if(refs&&b3.indexOf('{{REF}}')===-1) pp.push(refs); }
+    else if(refs) pp.push(refs);
+    if(corpo) pp.push(corpo);
+    if(extra) pp.push(extra);
+    if(b4) pp.push(fillD(b4,d));
+    if(b5) pp.push(b5);
+    if(b6) pp.push(b6);
+    if(b7) pp.push(b7);
+  } else {
+    var nome=document.getElementById('c-nome')?.value.trim()||'';
+    var corpo2=document.getElementById('c-corpo')?.value.trim()||'';
+    var extra2=document.getElementById('c-extra')?.value.trim()||'';
+    var d2={NOME:nome||'[nome]'};
+    var c1=getBVal('bc-1'),c2=getBVal('bc-2'),c3=getBVal('bc-3'),c4=getBVal('bc-4'),c5=getBVal('bc-5'),c6=getBVal('bc-6'),c7=getBVal('bc-7');
+    var temAlgo2=[c1,c2,c3,c4,c5,c6,c7].some(function(v){ return v!==undefined; })||corpo2;
+    if(!temAlgo2){ prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>'; return; }
+    if(c1) pp.push(fillD(c1,d2));
+    if(c2) pp.push(c2);
+    if(c3) pp.push(c3);
+    if(corpo2) pp.push(corpo2);
+    if(extra2) pp.push(extra2);
+    if(c4) pp.push(c4);
+    if(c5) pp.push(c5);
+    if(c6) pp.push(c6);
+    if(c7) pp.push(c7);
+  }
+  prev.innerText=pp.filter(Boolean).join('\n\n');
+}
+
+function prCopiar(){
+  var txt=document.getElementById('pr-prev')?.innerText;
+  if(!txt||txt.includes('Selecciona')){ toast('Nada para copiar'); return; }
+  navigator.clipboard.writeText(txt).then(function(){ toast('✓ Mensagem copiada!'); });
+}
+
+function prGuardar(){
+  var txt=document.getElementById('pr-prev')?.innerText;
+  if(!txt||txt.includes('Selecciona')){ toast('Nada para guardar'); return; }
+  guardarRascunho('Mensagem processual', txt, 'processuais');
+}
+
+function prReset(){
+  ['i-pc','i-os','i-corpo','i-extra','c-nome','c-corpo','c-extra'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  ['irc-pc','irc-os'].forEach(function(id){ document.getElementById(id)?.classList.remove('tem'); });
+  resetBlocos(['bi-1','bi-2','bi-3','bi-4','bi-5','bi-6','bi-7','bc-1','bc-2','bc-3','bc-4','bc-5','bc-6','bc-7']);
+  var prev=document.getElementById('pr-prev');
+  if(prev) prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>';
+}
+
+// ── BIBLIOTECA ────────────────────────────────────────
+var _bibCat=null, _bibQ='';
+
+var BIBLIOTECA=[
+  {id:'abertura',ico:'✉️',titulo:'Abertura e contexto',sub:'Para iniciar qualquer mensagem com o contexto certo',secs:[
+    {titulo:'Frases curtas',frases:['Na sequência do nosso contacto,','Em resposta à sua questão,','Relativamente ao assunto em apreço,','Conforme ficou acordado,','Na sequência da nossa conversa,','Para vosso conhecimento,','A título informativo,','Em complemento à informação anterior,','Em acompanhamento ao nosso último contacto,','Na sequência da reunião de hoje,','Conforme o que ficou definido em loja,','Como acordado anteriormente,','Na continuação do nosso diálogo,','Retomando o assunto tratado,','Em resposta ao vosso pedido,','Dando seguimento ao contacto anterior,','Na sequência da vossa solicitação,']},
+    {titulo:'Parágrafos completos',frases:['Venho por este meio dar seguimento ao nosso último contacto, partilhando as informações mais recentes sobre o assunto.','Em resposta à sua mensagem, e após a devida análise da situação, venho prestar os seguintes esclarecimentos.','Na sequência da conversa que tivemos, venho formalizar por escrito o que ficou acordado entre nós.','Quero dar-lhe uma actualização sobre o estado do seu projecto, conforme me comprometi a fazer.']}
+  ]},
+  {id:'confirmacao',ico:'✅',titulo:'Confirmação e resposta',sub:'Confirmar, validar e responder a pedidos',secs:[
+    {titulo:'Frases curtas',frases:['Confirmo o recebimento da vossa mensagem.','Confirmo que o processo foi aceite e registado.','Confirmo que está tudo tratado.','Confirmo que a informação foi registada.','Tomei nota da vossa solicitação.','A informação foi recebida e registada.','Confirmo que o material foi encomendado.','Sim, está correcto.','Positivo — pode avançar.','Tudo conforme o previsto.','O processo está em curso.','Já está a ser tratado.','Já dei andamento a esta situação.','Confirmo que o processo foi registado com o PC indicado.','A encomenda foi efectuada com sucesso.']},
+    {titulo:'Parágrafos completos',frases:['Confirmo a recepção da vossa mensagem e informo que já procedi em conformidade com o solicitado. Em caso de necessidade, estou disponível para prestar esclarecimentos adicionais.','Em resposta ao vosso pedido, confirmo que a situação foi tratada e que podem contar com o nosso acompanhamento ao longo do processo.','Venho confirmar que o processo foi aceite internamente e que todos os passos necessários foram iniciados.','Confirmo que a encomenda foi registada e que aguarda processamento. Assim que houver uma data de entrega confirmada, entrarei em contacto.']}
+  ]},
+  {id:'acompanhamento',ico:'🔔',titulo:'Acompanhamento',sub:'Follow-up, dar novidades e retomar contacto',secs:[
+    {titulo:'Frases curtas',frases:['Queria saber se já teve oportunidade de analisar a proposta.','Venho retomar o assunto que ficou pendente.','Queria dar-lhe uma actualização sobre o estado do processo.','Assim que tiver novidades informo de imediato.','Dou feedback logo que possível.','Estou a acompanhar a situação de perto.','Vou verificar e respondo com brevidade.','Ficamos a aguardar a sua confirmação para avançar.','Aguardo a vossa resposta com brevidade.','Solicito que me informem assim que possível.','Estou a aguardar indicações para prosseguir.','Entro em contacto assim que houver novidades.','Dou-lhe feedback assim que tiver informação concreta.','Estou a tratar disto com prioridade.','Preciso do seu feedback para conseguirmos avançar.']},
+    {titulo:'Parágrafos completos',frases:['Queria retomar o contacto relativamente ao assunto que ficou pendente. Estou disponível para agendar uma conversa e alinharmos os próximos passos.','Venho dar-lhe uma actualização sobre o estado do processo. A situação está a evoluir positivamente e assim que tiver informação mais concreta entro em contacto.','Não queria deixar passar mais tempo sem dar notícias. Estamos a tratar da situação com a devida atenção e brevemente terei algo concreto para partilhar.','Queria saber se a proposta que enviei correspondeu às suas expectativas ou se há algum ponto que gostasse de rever.']}
+  ]},
+  {id:'desculpas',ico:'🙏',titulo:'Desculpas e atrasos',sub:'Pedir desculpa com dignidade, sem se diminuir',secs:[
+    {titulo:'Frases curtas',frases:['Peço desculpa pela demora em dar notícias.','Peço desculpa pela demora em responder.','Lamento o atraso na comunicação.','Peço desculpa por só agora dar resposta.','Lamento o transtorno causado.','Peço desculpa pela situação — não é o que pretendemos.','Compreendo a sua insatisfação.','Lamento que a situação não tenha correspondido às expectativas.','Reconheço que a situação podia ter sido gerida de outra forma.','Peço desculpa pelo silêncio — tem sido um período muito exigente.','Lamento o constrangimento causado.']},
+    {titulo:'Parágrafos completos',frases:['Peço desculpa pela demora em responder. Não é reflexo da importância que dou à sua situação — tem sido um período de grande exigência e não queria responder sem ter informação concreta para partilhar.','Lamento o transtorno que esta situação lhe causou. Asseguro-lhe que estamos a tratar de tudo com a maior prioridade e que não o deixaremos sem resposta.','Compreendo a sua insatisfação e reconheço que a situação não correu como deveria. O que posso garantir é que estamos completamente focados em resolver isto da melhor forma possível.','Peço desculpa pelo atraso na comunicação. A situação revelou-se mais complexa do que o esperado e quis aguardar por informação concreta antes de entrar em contacto.']}
+  ]},
+  {id:'problemas',ico:'⚠️',titulo:'Problemas e situações difíceis',sub:'Reportar, escalar e gerir expectativas',secs:[
+    {titulo:'Frases curtas',frases:['Venho reportar uma situação que necessita de atenção urgente.','Identificámos um problema que precisa de resolução imediata.','A situação deteriorou-se e necessita de intervenção.','O cliente manifestou insatisfação com o estado da obra.','A situação está a criar um mal-estar que importa resolver.','Solicito o vosso apoio para resolver esta situação.','Solicito a vossa indicação dos próximos passos.','A situação está a ser tratada com prioridade.','O cliente aguarda uma resposta urgente.','É necessária uma decisão interna para avançar.','Solicito autorização para proceder.','A situação requer atenção imediata para não agravar.']},
+    {titulo:'Parágrafos completos',frases:['Venho reportar uma situação que está a causar mal-estar com o cliente e que necessita de resolução urgente. O cliente aguarda há demasiado tempo e qualquer atraso adicional agravará a situação.','Identifiquei um problema durante a visita à obra que necessita de intervenção imediata. Solicito indicação dos próximos passos e prazo de resposta.','A situação está a deteriorar-se e o cliente começa a mostrar sinais de impaciência justificada. Solicito o vosso apoio para alinharmos uma resposta concreta e rápida.','Após análise da situação, considero que esta deve ser escalada internamente para que possamos tomar uma decisão informada. Estou disponível para reunião presencial se necessário.']}
+  ]},
+  {id:'resolucao',ico:'✔️',titulo:'Resolução e encerramento',sub:'Comunicar que está resolvido e fechar assuntos',secs:[
+    {titulo:'Frases curtas',frases:['A situação foi resolvida com sucesso.','O assunto está encerrado.','O processo foi concluído conforme o previsto.','A questão ficou resolvida.','Tudo tratado — pode avançar com tranquilidade.','A situação está normalizada.','O problema foi identificado e corrigido.','O cliente confirmou a sua satisfação.','O processo foi encerrado com sucesso.','Ficou tudo resolvido a contento de todos.','Dou este assunto por encerrado.']},
+    {titulo:'Parágrafos completos',frases:['Venho informar que a situação foi resolvida com sucesso. O cliente ficou satisfeito com a intervenção e o processo está agora encerrado.','Após as devidas diligências, a situação está normalizada. Agradeço o vosso apoio ao longo deste processo — foi determinante para chegarmos a esta solução.','Tenho o prazer de informar que o projecto foi concluído dentro do prazo e que o cliente manifestou a sua satisfação. Obrigado pela colaboração de todos os envolvidos.','O problema foi identificado, tratado e resolvido. A situação está encerrada e o cliente informado. Não carece de mais acompanhamento da nossa parte.']}
+  ]},
+  {id:'disponibilidade',ico:'🤝',titulo:'Disponibilidade e apoio',sub:'Mostrar presença, abertura e compromisso',secs:[
+    {titulo:'Frases curtas',frases:['Estou disponível para qualquer esclarecimento.','Estou disponível para o que for necessário.','Pode contar comigo.','Qualquer dúvida é só dizer.','Estou ao seu dispor.','Podem contar comigo para o que precisarem.','Não hesite em contactar-me.','Estou disponível por telefone ou email.','Estou disponível também por WhatsApp.','Estou disponível para reunião presencial.','Qualquer dúvida ou ajuste, é só dizer.','Se vir algum ponto a ajustar, diga-me.','Pode contar com a minha total disponibilidade.','Estou ao seu lado neste processo.']},
+    {titulo:'Parágrafos completos',frases:['Estou completamente disponível para acompanhar esta situação. Não hesite em contactar-me a qualquer momento — seja por telefone, email ou WhatsApp.','Quero que saiba que pode contar comigo para o que for necessário. Este projecto é uma prioridade e darei a atenção que merece.','A minha disponibilidade é total. Sempre que precisar de esclarecimentos, ajustes ou simplesmente de uma conversa para alinhar expectativas, estou aqui.','Estou a acompanhar a situação de perto e qualquer novidade que surja será imediatamente comunicada. Pode ficar descansado.']}
+  ]},
+  {id:'agradecimento',ico:'💛',titulo:'Agradecimento',sub:'Agradecer de formas diferentes conforme o contexto',secs:[
+    {titulo:'Frases curtas',frases:['Obrigado pela sua confiança.','Obrigado pela sua compreensão.','Obrigado pela sua paciência.','Obrigado pela colaboração.','Obrigado pela disponibilidade.','Agradeço o vosso apoio.','Agradeço a vossa atenção.','Muito obrigado pela confiança depositada.','Fico grato pelo vosso acompanhamento.','Obrigado por nos dar a oportunidade de resolver a situação.','Obrigado por confiar no nosso trabalho.','Agradeço a vossa colaboração e paciência ao longo deste processo.']},
+    {titulo:'Parágrafos completos',frases:['Quero agradecer-lhe a confiança que deposita no nosso trabalho. É esse reconhecimento que nos motiva a dar sempre o melhor de nós.','Obrigado pela sua paciência e compreensão ao longo deste processo. Situações como esta são sempre desafiantes e a sua postura facilitou muito a resolução.','Agradeço sinceramente a vossa colaboração. O vosso apoio foi determinante para chegarmos a uma solução satisfatória para todas as partes.','Obrigado por nos ter dado a oportunidade de resolver a situação. Valorizamos muito a vossa confiança e trabalharemos para não a defraudar.']}
+  ]},
+  {id:'celebracao',ico:'🎉',titulo:'Celebração e reconhecimento',sub:'Felicitações, boas notícias e aprovações',secs:[
+    {titulo:'Frases curtas',frases:['Excelente notícia!','Fico muito satisfeito com esta decisão.','É uma óptima escolha.','Estou muito contente com esta novidade.','Que boa notícia — parabéns!','Ficou perfeito.','O resultado ficou acima das expectativas.','O cliente aprovou — óptimas notícias!','É um prazer trabalhar neste projecto.','O projecto ficou fantástico.','É um resultado do qual todos nos podemos orgulhar.','O esforço valeu a pena.']},
+    {titulo:'Parágrafos completos',frases:['Tenho o prazer de informar que o cliente aprovou a proposta. É uma excelente notícia e o resultado de muito trabalho e dedicação. Parabéns a todos os envolvidos.','Que boa notícia! Fico muito satisfeito com o resultado — é exactamente o que trabalhámos para alcançar. Obrigado pela confiança ao longo de todo o processo.','É com muito agrado que partilho esta boa notícia convosco. O projecto foi aprovado e podemos agora avançar com confiança para as próximas etapas.','Parabéns pelo excelente trabalho. O cliente ficou encantado com o resultado e é isso que torna este trabalho tão gratificante.']}
+  ]},
+  {id:'pessoal',ico:'💬',titulo:'Pessoal e próximo',sub:'Para clientes com quem tens mais proximidade',secs:[
+    {titulo:'Frases curtas',frases:['Foi um prazer trabalhar consigo.','Espero que fique satisfeito com o resultado.','Qualquer coisa que precise, já sabe onde estou.','É sempre um prazer!','Até à próxima!','Um abraço!','Bom proveito com a nova cozinha!','Espero que desfrute muito do espaço.','Fico feliz que correu tudo bem.','Foi bom trabalhar consigo neste projecto.','Cuide-se!']},
+    {titulo:'Parágrafos completos',frases:['Foi um prazer acompanhar este projecto de perto. Espero que desfrute muito do espaço renovado — ficou mesmo bonito.','É sempre muito gratificante quando um projecto corre bem e o cliente fica satisfeito. Obrigado pela simpatia e pela paciência ao longo de todo o processo.','Fico muito contente por termos conseguido resolver a situação. Sei que não foi fácil e aprecio muito a compreensão que mostrou durante todo o processo.','Foi um gosto trabalhar consigo. Sempre que precisar de qualquer coisa, já sabe que pode contar comigo. Cuide-se!']}
+  ]},
+  {id:'formal',ico:'📋',titulo:'Formal e institucional',sub:'Para comunicações formais ou escaladas',secs:[
+    {titulo:'Frases curtas',frases:['Venho por este meio comunicar formalmente.','Para os devidos efeitos, venho informar.','Para conhecimento de V. Exas.,','Em nome da Leroy Merlin Portugal,','No âmbito do processo referenciado,','Nos termos acordados,','Para efeitos de registo,','De acordo com o estipulado,','Em cumprimento do acordado,','Solicito a vossa análise e parecer.','Aguardo a vossa posição formal.','Solicito a vossa validação.','Reservo o direito de escalar esta situação internamente.']},
+    {titulo:'Parágrafos completos',frases:['Venho por este meio formalizar a comunicação relativa ao processo em apreço, solicitando a vossa análise e indicação dos próximos passos.','Para efeitos de registo e para os devidos efeitos legais e contratuais, venho comunicar formalmente a situação identificada, reservando todos os direitos.','No âmbito do processo referenciado, e após análise interna da situação, solicito formalmente a intervenção do departamento responsável com carácter de urgência.','Em nome da Leroy Merlin Portugal, venho formalizar o nosso compromisso de resolução desta situação, assegurando que serão tomadas todas as medidas necessárias.']}
+  ]},
+  {id:'encerramento',ico:'🏁',titulo:'Encerramento de projecto',sub:'Conclusão, entrega e satisfação do cliente',secs:[
+    {titulo:'Frases curtas',frases:['O projecto foi concluído com sucesso.','A instalação está concluída.','O cliente aceitou a entrega.','O projecto foi entregue dentro do prazo.','Tudo concluído conforme o previsto.','O cliente manifestou a sua satisfação.','A proposta foi aprovada — podemos avançar.','Damos por encerrado este projecto.','Foi um projecto desafiante e gratificante.','O resultado final superou as expectativas.','O cliente está muito satisfeito com o resultado.','Foi uma colaboração de sucesso.']},
+    {titulo:'Parágrafos completos',frases:['Tenho o prazer de informar que o projecto foi concluído com sucesso e que o cliente ficou muito satisfeito com o resultado final. Foi uma colaboração de excelência.','O processo de instalação foi concluído dentro do prazo acordado e o cliente aceitou a entrega sem reservas. Damos este projecto por encerrado.','É com satisfação que comunico a conclusão deste projecto. Foi um percurso com os seus desafios, mas o resultado final justificou cada esforço.','O cliente aprovou o projecto e manifestou a sua satisfação com o resultado. É sempre gratificante ver um projecto chegar a bom porto.']}
+  ]}
+];
+
+var BLOCO_CAT={
+  'bp-1':'abertura','bp-2':'abertura','bp-3':'acompanhamento','bp-4':'pessoal',
+  'rb-1':'abertura','rb-2':'problemas','rb-3':'acompanhamento','rb-4':'encerramento',
+  'bi-1':'abertura','bi-2':'desculpas','bi-3':'abertura','bi-4':'confirmacao','bi-5':'acompanhamento','bi-6':'disponibilidade','bi-7':'encerramento',
+  'bc-1':'abertura','bc-2':'desculpas','bc-3':'abertura','bc-4':'acompanhamento','bc-5':'disponibilidade','bc-6':'agradecimento','bc-7':'pessoal'
+};
+
+function pgBiblioteca(){
+  var total=BIBLIOTECA.reduce(function(a,c){ return a+c.secs.reduce(function(b,s){ return b+s.frases.length; },0); },0);
+  return '<div class="page-eyebrow">Referência</div>'+
+    '<div class="page-title">📚 Biblioteca de <em>Frases</em></div>'+
+    '<div class="page-sub">'+total+' frases organizadas por tema. Pesquisa, copia e guarda favoritos.</div>'+
+    '<div class="bib-bar"><div class="bib-sw"><span class="bib-si">🔍</span>'+
+    '<input class="bib-inp" id="bib-search" placeholder="Pesquisar frases..." oninput="bibFiltrar()"></div>'+
+    '<div class="bib-count" id="bib-count">'+total+' frases</div></div>'+
+    '<div class="bib-cats" id="bib-cats"></div>'+
+    '<div id="bib-main"></div>';
+}
+
+function bibInit(){
+  _bibCat=null; _bibQ='';
+  bibRenderCats();
+  bibRenderMain();
+}
+
+function bibFiltrar(){
+  _bibQ=document.getElementById('bib-search')?.value||'';
+  _bibCat=null;
+  bibRenderCats();
+  bibRenderMain();
+}
+
+function bibSelCat(id){
+  _bibCat=_bibCat===id?null:id;
+  _bibQ='';
+  var el=document.getElementById('bib-search'); if(el) el.value='';
+  bibRenderCats();
+  bibRenderMain();
+}
+
+function bibRenderCats(){
+  var el=document.getElementById('bib-cats'); if(!el) return;
+  el.innerHTML='<div class="bib-cat '+(!_bibCat?'at':'')+'" onclick="bibSelCat(null)">Todas</div>'+
+    BIBLIOTECA.map(function(c){
+      return '<div class="bib-cat '+(_bibCat===c.id?'at':'')+'" onclick="bibSelCat(\''+c.id+'\')">'+c.ico+' '+c.titulo+'</div>';
+    }).join('');
+}
+
+function bibRenderMain(){
+  var el=document.getElementById('bib-main'); if(!el) return;
+  var cats=_bibCat?BIBLIOTECA.filter(function(c){ return c.id===_bibCat; }):BIBLIOTECA;
+  var ql=_bibQ.toLowerCase().trim();
+  var html=''; var total=0;
+  cats.forEach(function(cat){
+    var catHtml='';
+    cat.secs.forEach(function(sec){
+      var fr=ql?sec.frases.filter(function(f){ return f.toLowerCase().indexOf(ql)>=0; }):sec.frases;
+      if(!fr.length) return;
+      total+=fr.length;
+      catHtml+='<div class="bib-st">'+sec.titulo+'</div><div class="bib-fs">'+
+        fr.map(function(f){
+          var fav=isFav(f);
+          return '<div class="bib-f"><div class="bib-ft">'+f+'</div>'+
+            '<div class="bib-fa">'+
+            '<button class="btn-cb" onclick="bibCopiar(\''+esc(f)+'\')">Copiar</button>'+
+            '<button class="btn-fb'+(fav?' at':'')+'" onclick="bibTogFav(\''+esc(f)+'\',\''+cat.titulo+'\')">⭐</button>'+
+            '</div></div>';
+        }).join('')+
+        '</div>';
+    });
+    if(!catHtml) return;
+    html+='<div style="margin-bottom:28px">'+
+      '<div style="font-family:var(--serif);font-size:20px;font-weight:300;margin-bottom:2px">'+cat.ico+' '+cat.titulo+'</div>'+
+      '<div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">'+cat.sub+'</div>'+
+      catHtml+'</div>';
+  });
+  el.innerHTML=html||'<div class="empty"><div class="empty-ico">🔍</div><div class="empty-t">Nenhuma frase encontrada</div></div>';
+  var c=document.getElementById('bib-count'); if(c) c.textContent=total+' frases';
+}
+
+function bibCopiar(t){
+  navigator.clipboard.writeText(t.replace(/\\n/g,'\n')).then(function(){ toast('Copiado!'); });
+}
+
+function bibTogFav(t,cat){
+  var texto=t.replace(/\\n/g,'\n');
+  var ficou=toggleFav(texto,cat);
+  toast(ficou?'⭐ Guardado nos favoritos':'Removido dos favoritos');
+  bibRenderMain();
+}
+
+// ── FAVORITOS ─────────────────────────────────────────
+function pgFavoritos(){
+  var favs=getFavs();
+  if(!favs.length) return '<div class="page-eyebrow">Guardado</div><div class="page-title">⭐ <em>Favoritos</em></div>'+
+    '<div class="empty"><div class="empty-ico">⭐</div><div class="empty-t">Sem favoritos ainda</div><div class="empty-s">Clica em ⭐ em qualquer frase da biblioteca.</div></div>';
+  return '<div class="page-eyebrow">Guardado</div><div class="page-title">⭐ <em>Favoritos</em></div>'+
+    '<div class="page-sub">'+favs.length+' frase(s) guardada(s)</div>'+
+    '<div class="fav-grid">'+
+    favs.map(function(f){
+      return '<div class="fav-card"><div class="fav-body">'+
+        '<div class="fav-cat">'+f.categoria+' · '+f.data+'</div>'+
+        '<div class="fav-txt">'+f.texto+'</div></div>'+
+        '<div style="display:flex;flex-direction:column;gap:5px">'+
+        '<button class="btn-ic" onclick="navigator.clipboard.writeText(\''+esc(f.texto)+'\').then(function(){ toast(\'Copiado!\'); })">📋</button>'+
+        '<button class="btn-ic" onclick="remFav('+f.id+')">🗑</button>'+
+        '</div></div>';
+    }).join('')+
+    '</div>';
+}
+
+function remFav(id){
+  removeFav(id);
+  navegar('favoritos');
+  toast('Removido dos favoritos');
+}
+
+// ── RASCUNHOS ─────────────────────────────────────────
+function pgRascunhos(){
+  var rascs=getRascs();
+  if(!rascs.length) return '<div class="page-eyebrow">Guardado</div><div class="page-title">📝 <em>Rascunhos</em></div>'+
+    '<div class="empty"><div class="empty-ico">📝</div><div class="empty-t">Sem rascunhos ainda</div><div class="empty-s">Clica em "Guardar rascunho" num construtor.</div></div>';
+  return '<div class="page-eyebrow">Guardado</div><div class="page-title">📝 <em>Rascunhos</em></div>'+
+    '<div class="page-sub">'+rascs.length+' rascunho(s)</div>'+
+    rascs.map(function(r){
+      return '<div class="rasc-card">'+
+        '<div class="rasc-hdr"><div class="rasc-titulo">'+r.titulo+'</div><div class="rasc-data">'+r.data+' '+r.hora+'</div></div>'+
+        '<div class="rasc-txt">'+r.texto+'</div>'+
+        '<div class="rasc-acoes">'+
+        '<button class="btn-r" onclick="navigator.clipboard.writeText(\''+esc(r.texto)+'\').then(function(){ toast(\'Copiado!\'); })">📋 Copiar</button>'+
+        '<button class="btn-r del" onclick="remRasc('+r.id+')">🗑 Remover</button>'+
+        '</div></div>';
+    }).join('');
+}
+
+function remRasc(id){
+  removeRasc(id);
+  navegar('rascunhos');
+  toast('Rascunho removido');
+}
+
+// ── MODAL BIBLIOTECA ──────────────────────────────────
+var _mbBlocoId=null, _mbCatId=null, _mbFiltCat=null;
+
+function modalBibAbrir(blocoId){
+  _mbBlocoId=blocoId;
+  _mbCatId=BLOCO_CAT[blocoId]||null;
+  _mbFiltCat=_mbCatId;
+  var cat=_mbCatId?BIBLIOTECA.find(function(c){ return c.id===_mbCatId; }):null;
+  var hint=document.getElementById('modal-hint');
+  if(hint) hint.textContent=cat?'Sugestão: '+cat.titulo:'Pesquisa em toda a biblioteca';
+  var si=document.getElementById('modal-search'); if(si) si.value='';
+  modalBibRenderCats();
+  modalBibRenderLista('');
+  document.getElementById('modal-bib').classList.add('aberto');
+  setTimeout(function(){ var el=document.getElementById('modal-search'); if(el) el.focus(); },80);
+}
+
+function modalBibFechar(){
+  document.getElementById('modal-bib').classList.remove('aberto');
+}
+
+function modalBibSelCat(id){
+  _mbFiltCat=id;
+  var si=document.getElementById('modal-search'); if(si) si.value='';
+  modalBibRenderCats();
+  modalBibRenderLista('');
+}
+
+function modalBibFiltrar(){
+  var q=document.getElementById('modal-search')?.value||'';
+  modalBibRenderLista(q);
+}
+
+function modalBibRenderCats(){
+  var el=document.getElementById('modal-cats'); if(!el) return;
+  el.innerHTML='<div class="modal-cat-pill '+(!_mbFiltCat?'at':'')+'" onclick="modalBibSelCat(null)">Todas</div>'+
+    BIBLIOTECA.map(function(c){
+      return '<div class="modal-cat-pill '+(_mbFiltCat===c.id?'at':'')+'" onclick="modalBibSelCat(\''+c.id+'\')">'+c.ico+' '+c.titulo+'</div>';
+    }).join('');
+}
+
+function modalBibRenderLista(q){
+  var el=document.getElementById('modal-lista'); if(!el) return;
+  var ql=q.toLowerCase().trim();
+  var cats=_mbFiltCat?BIBLIOTECA.filter(function(c){ return c.id===_mbFiltCat; }):BIBLIOTECA;
+  var html='';
+  cats.forEach(function(cat){
+    var todas=cat.secs.reduce(function(a,s){ return a.concat(s.frases); },[]);
+    var fr=ql?todas.filter(function(f){ return f.toLowerCase().indexOf(ql)>=0; }):todas;
+    if(!fr.length) return;
+    if(!_mbFiltCat) html+='<div class="modal-ch">'+cat.ico+' '+cat.titulo+'</div>';
+    fr.forEach(function(f){
+      html+='<div class="modal-frase" onclick="modalBibInserir(\''+esc(f)+'\')">'+f+'</div>';
+    });
+  });
+  el.innerHTML=html||'<div style="text-align:center;padding:28px;color:var(--ink-4);font-size:13px">Nenhuma frase encontrada'+(ql?' para "'+q+'"':'')+'.</div>';
+}
+
+function modalBibInserir(frase){
+  var texto=frase.replace(/\\n/g,'\n');
+  if(!_mbBlocoId) return;
+  var inp=document.getElementById('l-'+_mbBlocoId);
+  if(inp){
+    inp.value=texto;
+    // Disparar livreOpc manualmente
+    var blocoId=_mbBlocoId;
+    var bloco=document.getElementById(blocoId);
+    var s=document.getElementById('s-'+blocoId);
+    var opts=document.getElementById('o-'+blocoId);
+    if(opts) opts.querySelectorAll('.opc').forEach(function(o){ o.classList.remove('av','aa'); });
+    if(bloco) bloco.classList.add('sv');
+    if(s) s.textContent=texto.slice(0,28);
+    triggerRender();
+  }
+  modalBibFechar();
+  toast('Frase inserida ✓');
+}
+
+// ── MODAL CONTACTOS ───────────────────────────────────
+function modalCtcAbrir(){
+  ctcRenderLista();
+  document.getElementById('modal-ctc').classList.add('aberto');
+}
+
+function modalCtcFechar(){
+  document.getElementById('modal-ctc').classList.remove('aberto');
+}
+
+function ctcRenderLista(){
+  var ctcs=getCtcs();
+  var el=document.getElementById('ctc-lista'); if(!el) return;
+  if(!ctcs.length){
+    el.innerHTML='<p style="font-size:13px;color:var(--ink-4);font-style:italic">Nenhum contacto guardado ainda.</p>';
+    return;
+  }
+  el.innerHTML=ctcs.map(function(c){
+    return '<div class="ctc-item">'+
+      '<div class="ctc-info"><div class="ctc-nome">'+c.nome+'</div><div class="ctc-email">'+c.email+'</div></div>'+
+      '<button class="btn-dc" onclick="ctcRemover('+c.id+')">×</button>'+
+      '</div>';
+  }).join('');
+}
+
+function ctcAdicionar(){
+  var nome=document.getElementById('ctc-nome')?.value.trim();
+  var email=document.getElementById('ctc-email')?.value.trim();
+  if(!nome||!email) return;
+  var ctcs=getCtcs();
+  ctcs.push({id:Date.now(),nome:nome,email:email});
+  saveCtcs(ctcs);
+  var n=document.getElementById('ctc-nome'); if(n) n.value='';
+  var e=document.getElementById('ctc-email'); if(e) e.value='';
+  ctcRenderLista();
+  document.dispatchEvent(new CustomEvent('ctcActualizado'));
+}
+
+function ctcRemover(id){
+  saveCtcs(getCtcs().filter(function(c){ return c.id!==id; }));
+  ctcRenderLista();
+  document.dispatchEvent(new CustomEvent('ctcActualizado'));
+}
+
+// ── FECHAR MODAIS COM CLICK FORA ──────────────────────
+document.getElementById('modal-bib').addEventListener('click', function(e){
+  if(e.target===this) modalBibFechar();
+});
+document.getElementById('modal-ctc').addEventListener('click', function(e){
+  if(e.target===this) modalCtcFechar();
+});
+
+// ── ARRANQUE ──────────────────────────────────────────
+navegar('home');
+</script>
+</body>
+</html>
