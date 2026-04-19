@@ -473,10 +473,18 @@ function pgProposta(){
     '<div class="page-sub">Constrói a mensagem de envio bloco a bloco.</div>'+
     '<div class="cstr"><div class="cstr-esq">'+
     '<div class="sec-lbl">Dados</div>'+
+    '<div class="grid-2" style="margin-bottom:10px">'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="p-nome" placeholder="Ex: Ana" oninput="pRender()"></div>'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>'+
+    '<select class="inp" id="p-trat" onchange="pRender()">'+
+    '<option value="Sr.">Sr.</option>'+
+    '<option value="Dª">Dª</option>'+
+    '<option value="neutro">(neutro — sem tratamento)</option>'+
+    '<option value="sem">(sem — só o nome)</option>'+
+    '</select></div></div>'+
     '<div class="grid-2" style="margin-bottom:14px">'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="p-nome" placeholder="Ex: Ana Silva" oninput="pRender()"></div>'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Tipo de projecto</label><input class="inp" id="p-tipo" placeholder="Ex: Cozinha" oninput="pRender()"></div></div>'+
-    '<div class="campo"><label class="campo-label">Link da proposta</label><input class="inp" id="p-link" placeholder="https://..." oninput="pRender()"></div>'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Tipo de projecto</label><input class="inp" id="p-tipo" placeholder="Ex: Cozinha" oninput="pRender()"></div>'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Link da proposta</label><input class="inp" id="p-link" placeholder="https://..." oninput="pRender()"></div></div>'+
     '<div class="sec-lbl">Canal</div>'+
     '<div class="canal-grid">'+
     '<div class="canal-btn sel" id="p-email" onclick="pCanal(\'email\')">✉️ Email</div>'+
@@ -484,8 +492,8 @@ function pgProposta(){
     '<div class="sec-lbl">Constrói a mensagem</div>'+
     '<div class="blocos">'+
     mkBloco('bp-1','1','Saudação','v',[
-      ['Bom dia {{NOME}},','Bom dia [nome],'],
-      ['Boa tarde {{NOME}},','Boa tarde [nome],'],
+      ['Bom dia {{NOME}},','Bom dia Sr./Dª [nome],'],
+      ['Boa tarde {{NOME}},','Boa tarde Sr./Dª [nome],'],
       ['Olá {{NOME}}!','Olá [nome]!']
     ],'(sem saudação)','Outra saudação...')+
     mkBloco('bp-2','2','Abertura','v',[
@@ -528,9 +536,15 @@ function pCanal(c){
 
 function pRender(){
   var nome=document.getElementById('p-nome')?.value.trim()||'';
+  var trat=document.getElementById('p-trat')?.value||'Sr.';
   var tipo=document.getElementById('p-tipo')?.value.trim()||'';
   var link=document.getElementById('p-link')?.value.trim()||'';
-  var d={NOME:nome||'[nome]',TIPO:tipo||'[tipo]',LINK:link||'[link]'};
+  var nomeCompleto = trat==='sem' ? (nome||'[nome]') :
+                    trat==='neutro' ? (nome||'[nome]') :
+                    (trat+' '+(nome||'[nome]')).trim();
+  var art  = trat==='Dª' ? 'a' : 'o';
+  var dart = trat==='Dª' ? 'da' : 'do';
+  var d={NOME:nomeCompleto,TIPO:tipo||'[tipo]',LINK:link||'[link]',ART:art,DART:dart,TRAT:trat==='sem'||trat==='neutro'?'':trat};
   var b1=getBVal('bp-1'),b2=getBVal('bp-2'),b3=getBVal('bp-3'),b4=getBVal('bp-4');
   var prev=document.getElementById('p-prev'); if(!prev) return;
   if([b1,b2,b3,b4].every(function(v){ return v===undefined; })){
@@ -543,8 +557,10 @@ function pRender(){
 
 function pCopiarAssunto(){
   var nome=document.getElementById('p-nome')?.value.trim()||'[nome]';
+  var trat=document.getElementById('p-trat')?.value||'Sr.';
   var tipo=document.getElementById('p-tipo')?.value.trim()||'[tipo]';
-  navigator.clipboard.writeText('Proposta '+tipo+' — '+nome).then(function(){ toast('Assunto copiado!'); });
+  var nc=trat==='sem'||trat==='neutro'?nome:(trat+' '+nome).trim();
+  navigator.clipboard.writeText('Proposta '+tipo+' — '+nc).then(function(){ toast('Assunto copiado!'); });
 }
 
 function pCopiar(){
@@ -562,6 +578,7 @@ function pGuardar(){
 
 function pReset(){
   ['p-nome','p-link','p-tipo'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  var pt=document.getElementById('p-trat'); if(pt) pt.value='Sr.';
   resetBlocos(['bp-1','bp-2','bp-3','bp-4']);
   var prev=document.getElementById('p-prev');
   if(prev) prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>';
@@ -576,7 +593,15 @@ function pgReporte(){
     '<div class="page-sub">Reporta situações aos colegas com PC/OS, artigos e destinatários.</div>'+
     '<div class="cstr"><div class="cstr-esq">'+
     '<div class="sec-lbl">Dados do cliente</div>'+
-    '<div class="campo"><label class="campo-label">Nome do cliente</label><input class="inp" id="r-nome" placeholder="Ex: Sr. Marco" oninput="rRender()"></div>'+
+    '<div class="grid-2" style="margin-bottom:14px">'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="r-nome" placeholder="Ex: Marco" oninput="rRender()"></div>'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>'+
+    '<select class="inp" id="r-trat" onchange="rRender()">'+
+    '<option value="Sr.">Sr.</option>'+
+    '<option value="Dª">Dª</option>'+
+    '<option value="neutro">(neutro)</option>'+
+    '<option value="sem">(sem)</option>'+
+    '</select></div></div>'+
     '<div class="sec-lbl">Referências</div>'+
     '<div class="refs-grid">'+
     '<div class="ref-card" id="rc-pc"><div class="ref-badge">PC · Projecto</div><div class="ref-desc">Identifica artigos e materiais</div><input class="ref-inp" id="r-pc" placeholder="Ex: 200153" oninput="rRefCard(\'pc\');rRender()"></div>'+
@@ -719,9 +744,15 @@ function rCopiarDest(tipo){
 
 function rRender(){
   var nome=document.getElementById('r-nome')?.value.trim()||'';
+  var trat=document.getElementById('r-trat')?.value||'Sr.';
   var desc=document.getElementById('r-desc')?.value.trim()||'';
   var refs=rGetRefs();
-  var d={NOME:nome||'[nome]',REFS:refs.str};
+  var nomeCompleto = trat==='sem' ? (nome||'[nome]') :
+                     trat==='neutro' ? (nome||'[nome]') :
+                     (trat+' '+(nome||'[nome]')).trim();
+  var art  = trat==='Dª' ? 'a' : 'o';
+  var dart = trat==='Dª' ? 'da' : 'do';
+  var d={NOME:nomeCompleto,REFS:refs.str,ART:art,DART:dart,TRAT:trat==='sem'||trat==='neutro'?'':trat};
   var b1=getBVal('rb-1'),b2=getBVal('rb-2'),b3=getBVal('rb-3'),b4=getBVal('rb-4');
   var arts=[];
   document.querySelectorAll('.art-linha').forEach(function(l){
@@ -753,9 +784,12 @@ function rCopiarAssunto(){
 
 function rCopiar(){
   var nome=document.getElementById('r-nome')?.value.trim()||'';
+  var trat=document.getElementById('r-trat')?.value||'Sr.';
   var desc=document.getElementById('r-desc')?.value.trim()||'';
   var refs=rGetRefs();
-  var d={NOME:nome||'[nome]',REFS:refs.str};
+  var nomeCompleto = trat==='sem'||trat==='neutro' ? (nome||'[nome]') : (trat+' '+(nome||'[nome]')).trim();
+  var art=trat==='Dª'?'a':'o'; var dart=trat==='Dª'?'da':'do';
+  var d={NOME:nomeCompleto,REFS:refs.str,ART:art,DART:dart,TRAT:trat==='sem'||trat==='neutro'?'':trat};
   var b1=getBVal('rb-1'),b2=getBVal('rb-2'),b3=getBVal('rb-3'),b4=getBVal('rb-4');
   var arts=[];
   document.querySelectorAll('.art-linha').forEach(function(l){
@@ -783,6 +817,7 @@ function rGuardar(){
 
 function rReset(){
   ['r-nome','r-pc','r-os','r-desc'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  var rt=document.getElementById('r-trat'); if(rt) rt.value='Sr.';
   ['rc-pc','rc-os'].forEach(function(id){ document.getElementById(id)?.classList.remove('tem'); });
   var arts=document.getElementById('r-arts'); if(arts) arts.innerHTML='';
   _rAid=0; _rAssunto='';
@@ -828,7 +863,15 @@ function pgProcessuais(){
     // Painel Cliente
     '<div id="pr-cli" style="display:none">'+
     '<div class="sec-lbl">Dados</div>'+
-    '<div class="campo"><label class="campo-label">Nome do cliente</label><input class="inp" id="c-nome" placeholder="Ex: Dª Ana" oninput="prRender()"></div>'+
+    '<div class="grid-2" style="margin-bottom:14px">'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="c-nome" placeholder="Ex: Ana" oninput="prRender()"></div>'+
+    '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>'+
+    '<select class="inp" id="c-trat" onchange="prRender()">'+
+    '<option value="Sr.">Sr.</option>'+
+    '<option value="Dª">Dª</option>'+
+    '<option value="neutro">(neutro)</option>'+
+    '<option value="sem">(sem)</option>'+
+    '</select></div></div>'+
     '<div class="sec-lbl">Constrói a mensagem</div>'+
     '<div class="blocos">'+
     mkBloco('bc-1','1','Saudação','v',[['Bom dia {{NOME}},','Bom dia [nome],'],['Boa tarde {{NOME}},','Boa tarde [nome],'],['Olá {{NOME}}!','Olá [nome]!'],['Exmo. Sr. {{NOME}},','Exmo. Sr. [nome],'],['Exma. Sra. {{NOME}},','Exma. Sra. [nome],']],'(sem saudação)','Outra saudação...')+
@@ -900,9 +943,15 @@ function prRender(){
     if(b7) pp.push(b7);
   } else {
     var nome=document.getElementById('c-nome')?.value.trim()||'';
+    var trat=document.getElementById('c-trat')?.value||'Sr.';
     var corpo2=document.getElementById('c-corpo')?.value.trim()||'';
     var extra2=document.getElementById('c-extra')?.value.trim()||'';
-    var d2={NOME:nome||'[nome]'};
+    var nomeCompleto = trat==='sem' ? (nome||'[nome]') :
+                       trat==='neutro' ? (nome||'[nome]') :
+                       (trat+' '+(nome||'[nome]')).trim();
+    var art  = trat==='Dª' ? 'a' : 'o';
+    var dart = trat==='Dª' ? 'da' : 'do';
+    var d2={NOME:nomeCompleto,ART:art,DART:dart,TRAT:trat==='sem'||trat==='neutro'?'':trat};
     var c1=getBVal('bc-1'),c2=getBVal('bc-2'),c3=getBVal('bc-3'),c4=getBVal('bc-4'),c5=getBVal('bc-5'),c6=getBVal('bc-6'),c7=getBVal('bc-7');
     var temAlgo2=[c1,c2,c3,c4,c5,c6,c7].some(function(v){ return v!==undefined; })||corpo2;
     if(!temAlgo2){ prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>'; return; }
@@ -933,6 +982,7 @@ function prGuardar(){
 
 function prReset(){
   ['i-pc','i-os','i-corpo','i-extra','c-nome','c-corpo','c-extra'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  var ct=document.getElementById('c-trat'); if(ct) ct.value='Sr.';
   ['irc-pc','irc-os'].forEach(function(id){ document.getElementById(id)?.classList.remove('tem'); });
   resetBlocos(['bi-1','bi-2','bi-3','bi-4','bi-5','bi-6','bi-7','bc-1','bc-2','bc-3','bc-4','bc-5','bc-6','bc-7']);
   var prev=document.getElementById('pr-prev');
