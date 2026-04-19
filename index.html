@@ -370,8 +370,13 @@ function selOpc(blocoId, cor, el){
   if(bloco){ bloco.classList.remove('aberto','sv','sa'); bloco.classList.add(cor==='a'?'sa':'sv'); }
   var s=document.getElementById('s-'+blocoId);
   if(s) s.textContent=el.classList.contains('opc-sem')?'(nenhum)':el.textContent.slice(0,28);
+  // Pré-preencher campo livre com o valor da opção — permite edição posterior
   var liv=document.getElementById('l-'+blocoId);
-  if(liv) liv.value='';
+  if(liv){
+    var val=el.dataset.v||'';
+    liv.value=val.replace(/&#10;/g,'\n');
+    liv.placeholder=val?'Edita aqui se necessário...':'';
+  }
   triggerRender();
 }
 
@@ -394,9 +399,11 @@ function getBVal(blocoId){
   var opts=document.getElementById('o-'+blocoId);
   if(!opts) return undefined;
   var ativo=opts.querySelector('.opc.av,.opc.aa');
-  if(ativo) return ativo.dataset.v!==undefined ? ativo.dataset.v : null;
+  // Se há campo livre preenchido, usa-o (permite edição sobre a opção seleccionada)
   var liv=document.getElementById('l-'+blocoId);
   if(liv && liv.value.trim()) return liv.value.trim();
+  // Sem campo livre, usa a opção seleccionada
+  if(ativo) return ativo.dataset.v!==undefined ? ativo.dataset.v : null;
   return undefined;
 }
 
