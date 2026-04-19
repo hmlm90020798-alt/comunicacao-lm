@@ -339,36 +339,25 @@ function guardarRascunho(titulo, texto, modulo){
   toast('📝 Rascunho guardado');
 }
 
-// ── Memória de sessão ────────────────────────────────────
-function memSave(modulo){
-  var campos={
-    'proposta': ['p-nome','p-tipo','p-link','p-trat','p-canal'],
-    'reporte':  ['r-nome','r-trat','r-pc','r-os','r-desc'],
-    'processuais': ['i-pc','i-os','i-corpo','i-extra','c-nome','c-trat','c-corpo','c-extra']
-  };
-  var ids=campos[modulo]; if(!ids) return;
+// ── Memória dos módulos ──────────────────────────────
+function memSave(mod, ids){
   var data={};
   ids.forEach(function(id){
-    var el=document.getElementById(id);
-    if(el) data[id]=el.value;
+    var el=document.getElementById(id); if(el) data[id]=el.value;
   });
-  sessionStorage.setItem('clm_mem_'+modulo, JSON.stringify(data));
+  localStorage.setItem('clm_'+mod, JSON.stringify(data));
 }
-
-function memRestore(modulo){
-  var raw=sessionStorage.getItem('clm_mem_'+modulo);
-  if(!raw) return;
+function memLoad(mod, ids){
   try{
-    var data=JSON.parse(raw);
-    Object.keys(data).forEach(function(id){
+    var data=JSON.parse(localStorage.getItem('clm_'+mod)||'{}');
+    ids.forEach(function(id){
       var el=document.getElementById(id);
-      if(el) el.value=data[id];
+      if(el && data[id]!==undefined) el.value=data[id];
     });
   }catch(e){}
 }
-
-function memClear(modulo){
-  sessionStorage.removeItem('clm_mem_'+modulo);
+function memClear(mod){
+  localStorage.removeItem('clm_'+mod);
 }
 
 // ── Navegação ─────────────────────────────────────────
@@ -432,10 +421,8 @@ function getBVal(blocoId){
   if(!opts) return undefined;
   var ativo=opts.querySelector('.opc.av,.opc.aa');
   var liv=document.getElementById('l-'+blocoId);
-  // Campo livre tem prioridade — já tem o texto real sem encoding
   if(liv && liv.value.trim()) return liv.value.trim();
   if(ativo){
-    // Converter &#10; (HTML entity) para quebra de linha real — UMA vez aqui
     var val=ativo.dataset.v!==undefined ? ativo.dataset.v : null;
     if(val) val=val.replace(/&#10;/g,'\n');
     return val;
@@ -547,8 +534,8 @@ function pgProposta(){
       ['Diga-me se está de acordo ou o que pretende ajustar.','Diga-me se está de acordo.']
     ],'(sem fecho)','Outro fecho...')+
     mkBloco('bp-4','4','Despedida','v',[
-      ['Um abraço,\nHélder','Um abraço, Hélder'],
-      ['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos']
+      ['Um abraço,&#10;Hélder','Um abraço, Hélder'],
+      ['Com os melhores cumprimentos,&#10;Hélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos']
     ],'(sem despedida)','Outra despedida...')+
     '</div></div>'+
     '<div class="cstr-dir">'+
@@ -563,6 +550,8 @@ function pgProposta(){
 
 function pInit(){
   _pCanal='email';
+  memLoad('proposta',['p-nome','p-tipo','p-link','p-trat']);
+  setTimeout(pRender,0);
   memRestore('proposta');
   var canal=document.getElementById('p-canal-mem');
   // Restaurar canal se guardado
@@ -581,6 +570,7 @@ function pCanal(c){
 }
 
 function pRender(){
+  memSave('proposta',['p-nome','p-tipo','p-link','p-trat']);
   var nome=document.getElementById('p-nome')?.value.trim()||'';
   var trat=document.getElementById('p-trat')?.value||'Sr.';
   var tipo=document.getElementById('p-tipo')?.value.trim()||'';
@@ -696,9 +686,9 @@ function pgReporte(){
       ['Agradeço confirmação de nova data para garantir alinhamento com o cliente.','Agradeço confirmação de nova data.']
     ],'(sem pedido)','Outro pedido...')+
     mkBloco('rb-4','4','Despedida','v',[
-      ['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],
-      ['Obrigado pela atenção,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],
-      ['Obrigado pela colaboração,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração']
+      ['Com os melhores cumprimentos,&#10;Hélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],
+      ['Obrigado pela atenção,&#10;Hélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],
+      ['Obrigado pela colaboração,&#10;Hélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração']
     ],'(sem despedida)','Outra despedida...')+
     '</div></div>'+
     '<div class="cstr-dir">'+
@@ -713,7 +703,7 @@ function pgReporte(){
 
 function rInit(){
   _rAid=0; _rAssunto='';
-  memRestore('reporte');
+  memLoad('reporte',['r-nome','r-trat','r-pc','r-os','r-desc']);
   rRenderDests();
   rAddArt();
   document.removeEventListener('ctcActualizado', rRenderDests);
@@ -791,6 +781,7 @@ function rCopiarDest(tipo){
 }
 
 function rRender(){
+  memSave('reporte',['r-nome','r-trat','r-pc','r-os','r-desc']);
   var nome=document.getElementById('r-nome')?.value.trim()||'';
   var trat=document.getElementById('r-trat')?.value||'Sr.';
   var desc=document.getElementById('r-desc')?.value.trim()||'';
@@ -907,7 +898,7 @@ function pgProcessuais(){
     mkBloco('bi-4','4','Estado do processo','a',[['Confirmo que o processo foi aceite e registado.','Confirmo que foi aceite e registado.'],['Confirmo que o processo foi registado com {{REF}}.','Confirmo que foi registado com PC/OS.'],['Já dei andamento a esta situação.','Já dei andamento a esta situação.'],['A situação está a ser tratada com prioridade.','A situação está a ser tratada com prioridade.'],['O processo está pendente de aprovação interna.','Pendente de aprovação interna.'],['O processo foi encerrado com sucesso.','Processo encerrado com sucesso.']],'(sem estado)','Outro estado...')+
     mkBloco('bi-5','5','Próximo passo / Prazo','a',[['Assim que tiver novidades informo de imediato.','Informo assim que tiver novidades.'],['Aguardo a vossa resposta com brevidade.','Aguardo resposta com brevidade.'],['Dou feedback logo que possível.','Dou feedback logo que possível.'],['Ficamos a aguardar a vossa confirmação.','Aguardamos a vossa confirmação.'],['Solicito resposta até ao final do dia.','Solicito resposta até final do dia.']],'(sem prazo)','Outro prazo...')+
     mkBloco('bi-6','6','Disponibilidade','a',[['Estou disponível para qualquer esclarecimento.','Disponível para qualquer esclarecimento.'],['Podem contar comigo para o que precisarem.','Podem contar comigo.'],['Qualquer dúvida é só dizer.','Qualquer dúvida é só dizer.'],['Estou a acompanhar a situação de perto.','Estou a acompanhar de perto.']],'(sem disponibilidade)','Outra disponibilidade...')+
-    mkBloco('bi-7','7','Despedida','a',[['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Obrigado pela atenção,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],['Obrigado pela colaboração,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração'],['Um abraço,\nHélder','Um abraço, Hélder']],'(sem despedida)','Outra despedida...')+
+    mkBloco('bi-7','7','Despedida','a',[['Com os melhores cumprimentos,&#10;Hélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Obrigado pela atenção,&#10;Hélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],['Obrigado pela colaboração,&#10;Hélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração'],['Um abraço,&#10;Hélder','Um abraço, Hélder']],'(sem despedida)','Outra despedida...')+
     '</div></div>'+
     // Painel Cliente
     '<div id="pr-cli" style="display:none">'+
@@ -934,7 +925,7 @@ function pgProcessuais(){
     mkBloco('bc-4','4','Próximo passo / Prazo','v',[['Assim que tiver novidades entro em contacto de imediato.','Entro em contacto assim que tiver novidades.'],['Dou-lhe feedback logo que possível.','Dou-lhe feedback logo que possível.'],['Ficamos a aguardar a sua confirmação para avançar.','Aguardamos a sua confirmação.'],['Pode contar com uma resposta ainda hoje.','Pode contar com resposta ainda hoje.']],'(sem prazo)','Outro prazo...')+
     mkBloco('bc-5','5','Disponibilidade','v',[['Estou disponível para qualquer dúvida ou esclarecimento.','Disponível para qualquer dúvida.'],['Pode contar comigo para o que precisar.','Pode contar comigo.'],['Qualquer dúvida ou ajuste, é só dizer.','Qualquer dúvida ou ajuste, é só dizer.'],['Se vir algum ponto a ajustar, diga-me.','Se vir algum ponto a ajustar, diga-me.']],'(sem disponibilidade)','Outra disponibilidade...')+
     mkBloco('bc-6','6','Agradecimento (opcional)','v',[['Obrigado pela sua compreensão.','Obrigado pela sua compreensão.'],['Obrigado pela sua paciência.','Obrigado pela sua paciência.'],['Obrigado pela confiança depositada.','Obrigado pela confiança depositada.']],'(sem agradecimento)','Outro agradecimento...')+
-    mkBloco('bc-7','7','Despedida','v',[['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Um abraço,\nHélder','Um abraço, Hélder'],['Até breve,\nHélder','Até breve, Hélder'],['Com estima,\nHélder Melo | VPR · Leroy Merlin','Com estima']],'(sem despedida)','Outra despedida...')+
+    mkBloco('bc-7','7','Despedida','v',[['Com os melhores cumprimentos,&#10;Hélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Um abraço,&#10;Hélder','Um abraço, Hélder'],['Até breve,&#10;Hélder','Até breve, Hélder'],['Com estima,&#10;Hélder Melo | VPR · Leroy Merlin','Com estima']],'(sem despedida)','Outra despedida...')+
     '</div></div>'+
     '</div>'+
     '<div class="cstr-dir">'+
@@ -948,8 +939,8 @@ function pgProcessuais(){
 
 function prInit(){
   _prDest='int';
-  memRestore('processuais');
-  setTimeout(function(){ prRender(); },0);
+  memLoad('processuais',['i-pc','i-os','i-corpo','i-extra','c-nome','c-trat','c-corpo','c-extra']);
+  setTimeout(prRender,0);
 }
 
 function prMudar(d){
@@ -971,6 +962,7 @@ function prRefCard(tipo){
 }
 
 function prRender(){
+  memSave('processuais',['i-pc','i-os','i-corpo','i-extra','c-nome','c-trat','c-corpo','c-extra']);
   var prev=document.getElementById('pr-prev'); if(!prev) return;
   var pp=[];
   if(_prDest==='int'){
