@@ -595,7 +595,13 @@ function pgReporte(){
       ['Na sequência de uma reclamação do cliente {{NOME}}{{REFS}}, venho reportar a seguinte situação:','Na sequência de uma reclamação do cliente...'],
       ['O técnico reportou-me a seguinte situação na obra do cliente {{NOME}}{{REFS}}:','O técnico reportou a seguinte situação...'],
       ['Na sequência de uma visita à obra do cliente {{NOME}}{{REFS}}, identifiquei os seguintes problemas:','Na sequência de uma visita à obra...'],
-      ['O cliente {{NOME}}{{REFS}} manifestou insatisfação com a sua obra. Venho reportar a situação:','O cliente manifestou insatisfação...']
+      ['O cliente {{NOME}}{{REFS}} manifestou insatisfação com a sua obra. Venho reportar a situação:','O cliente manifestou insatisfação...'],
+      ['O cliente entrou em contacto a solicitar actualização sobre a devolução do valor referente a [situação].','Devolução — cliente solicita actualização...'],
+      ['Está pendente a devolução ao cliente de um valor associado a [excedente/devolução].','Devolução pendente ao cliente...'],
+      ['Existe um valor por regularizar com o cliente, relativo a [descrição].','Valor por regularizar com o cliente...'],
+      ['A visita técnica prevista para [data] não foi realizada.','Visita técnica não realizada...'],
+      ['A entrega de material agendada para [data] não ocorreu conforme previsto.','Entrega de material não ocorreu...'],
+      ['Verificou-se um atraso na execução de [tarefa/serviço].','Atraso na execução...']
     ],'(sem origem)','Outra origem...')+
     '</div>'+
     '<div class="sec-lbl">Descrição do problema</div>'+
@@ -609,7 +615,13 @@ function pgReporte(){
       ['Solicito o vosso apoio para resolver a situação o mais rapidamente possível.','Solicito apoio para resolver a situação.'],
       ['Aguardo a vossa posição para poder dar feedback ao cliente com brevidade.','Aguardo posição para dar feedback ao cliente.'],
       ['Solicito autorização e indicação de como proceder para resolver esta situação.','Solicito autorização para proceder.'],
-      ['Estou disponível para reunião presencial para alinhamento desta situação.','Disponível para reunião presencial.']
+      ['Estou disponível para reunião presencial para alinhamento desta situação.','Disponível para reunião presencial.'],
+      ['Peço verificação do estado deste processo e indicação de previsão.','Peço verificação e indicação de previsão.'],
+      ['Necessito de confirmação sobre quando será efectuada a devolução.','Necessito confirmação da devolução.'],
+      ['Agradeço que validem este ponto para conseguirmos dar resposta ao cliente.','Agradeço validação para resposta ao cliente.'],
+      ['Peço actualização sobre o reagendamento desta situação.','Peço actualização sobre reagendamento.'],
+      ['Necessito de nova previsão para realização deste serviço.','Necessito nova previsão para o serviço.'],
+      ['Agradeço confirmação de nova data para garantir alinhamento com o cliente.','Agradeço confirmação de nova data.']
     ],'(sem pedido)','Outro pedido...')+
     mkBloco('rb-4','4','Despedida','v',[
       ['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],
@@ -972,6 +984,25 @@ var RESPOSTAS=[
     'Vamos combinar — quando tem disponibilidade?',
     'Posso ligar-lhe amanhã de manhã?',
     'Ficamos assim — qualquer alteração aviso com antecedência.'
+  ]},
+  {id:'tensa',ico:'😤',titulo:'Cliente insatisfeito',msgs:[
+    'Compreendo a sua situação e lamento o transtorno. Estou a tratar disto com prioridade.',
+    'Entendo a sua preocupação e asseguro que estou a acompanhar este assunto pessoalmente.',
+    'Lamento que esta situação não tenha corrido como esperado. Vou dar-lhe notícias assim que possível.',
+    'A sua insatisfação é completamente compreensível. Estou a trabalhar para resolver isto.',
+    'Já tomei nota e estou a tratar disto agora mesmo.',
+    'Estou a verificar o que aconteceu e entro em contacto ainda hoje.',
+    'Recebi a sua mensagem e vou resolver esta situação com a maior brevidade.',
+    'Já escalei esta situação internamente. Assim que tiver resposta contacto-o de imediato.'
+  ]},
+  {id:'atraso',ico:'🔧',titulo:'Obra / entrega / atraso',msgs:[
+    'Estou a verificar o estado da entrega e dou-lhe notícias em breve.',
+    'Vou confirmar a nova data e informo assim que possível.',
+    'Já entrei em contacto com a equipa responsável e aguardo resposta.',
+    'Estou a acompanhar esta situação e não o deixarei sem resposta.',
+    'Estou a verificar o que originou este atraso e entro em contacto brevemente.',
+    'Já estou em contacto com o técnico para confirmar nova data. Assim que tiver informação aviso.',
+    'Lamento o atraso. Estou a tratar de uma solução e dou-lhe notícias hoje.'
   ]},
   {id:'pessoal',ico:'😊',titulo:'Pessoal e casual',msgs:[
     'Obrigado pela mensagem!',
