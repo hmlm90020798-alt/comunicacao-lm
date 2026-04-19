@@ -140,7 +140,6 @@ body{font-family:var(--sans);background:var(--paper-2);color:var(--ink);min-heig
 .tab-int:hover{color:var(--ink)}
 .tab-int.av{color:var(--green);border-bottom-color:var(--green)}
 .tab-int.aa{color:var(--blue);border-bottom-color:var(--blue)}
-.ptab{display:none}.ptab.vis{display:block}
 .canal-grid{display:flex;gap:8px;margin-bottom:16px}
 .canal-btn{flex:1;padding:9px;border:1.5px solid var(--paper-3);border-radius:8px;background:var(--paper);cursor:pointer;text-align:center;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink-2);transition:all .15s}
 .canal-btn.sel{border-color:var(--green);background:var(--green-pale);color:var(--green)}
@@ -201,7 +200,6 @@ body{font-family:var(--sans);background:var(--paper-2);color:var(--ink);min-heig
 .modal-frase{padding:10px 12px;background:var(--paper-2);border:1px solid var(--paper-3);border-radius:8px;font-size:13px;color:var(--ink-2);line-height:1.6;cursor:pointer;transition:all .15s;white-space:pre-line}
 .modal-frase:hover{border-color:var(--green-brd);background:var(--green-pale);color:var(--green)}
 .modal-ch{font-family:var(--mono);font-size:10px;color:var(--ink-4);text-transform:uppercase;letter-spacing:1px;padding:6px 0 4px;border-bottom:1px solid var(--paper-3);margin-bottom:5px}
-.modal-ctc{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:12px}
 .modal-ctc-inp{padding:8px 10px;border:1px solid var(--paper-3);border-radius:7px;font-family:var(--sans);font-size:13px;color:var(--ink);outline:none;background:var(--paper-2);transition:border-color .15s;width:100%}
 .modal-ctc-inp:focus{border-color:var(--green)}
 .modal-ctc-inp::placeholder{color:var(--ink-4)}
@@ -271,7 +269,7 @@ body{font-family:var(--sans);background:var(--paper-2);color:var(--ink);min-heig
     </div>
     <div style="padding:16px 18px">
       <div class="ctc-lista" id="ctc-lista"></div>
-      <div class="modal-ctc">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:12px">
         <input class="modal-ctc-inp" id="ctc-nome" placeholder="Nome">
         <input class="modal-ctc-inp" id="ctc-email" placeholder="Email" onkeydown="if(event.key==='Enter')ctcAdicionar()">
         <button class="btn-add-ctc" onclick="ctcAdicionar()">Adicionar</button>
@@ -283,148 +281,198 @@ body{font-family:var(--sans);background:var(--paper-2);color:var(--ink);min-heig
 <div class="toast" id="toast"></div>
 
 <script>
+'use strict';
+
 // ═══════════════════════════════════════════════════════
-// COMUNICAÇÃO LM — Script completo inline
+// UTILITÁRIOS
 // ═══════════════════════════════════════════════════════
 
-// ── Storage ──────────────────────────────────────────
-var LS_FAVS  = 'clm_favs';
-var LS_RASCS = 'clm_rascs';
-var LS_CTCS  = 'clm_ctcs';
-
-function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
-function lsSet(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
-
-function getFavs(){ return lsGet(LS_FAVS); }
-function isFav(txt){ return getFavs().some(function(f){ return f.texto===txt; }); }
-function toggleFav(txt,cat){
-  var favs=getFavs(), idx=favs.findIndex(function(f){ return f.texto===txt; });
-  if(idx>=0){ favs.splice(idx,1); lsSet(LS_FAVS,favs); return false; }
-  favs.unshift({id:Date.now(),texto:txt,categoria:cat||'Geral',data:new Date().toLocaleDateString('pt-PT')});
-  lsSet(LS_FAVS,favs); return true;
-}
-function removeFav(id){ lsSet(LS_FAVS, getFavs().filter(function(f){ return f.id!==id; })); }
-
-function getRascs(){ return lsGet(LS_RASCS); }
-function saveRasc(titulo,texto,modulo){
-  var rascs=getRascs();
-  rascs.unshift({id:Date.now(),titulo:titulo||'Sem título',texto:texto,modulo:modulo,
-    data:new Date().toLocaleDateString('pt-PT'),hora:new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})});
-  lsSet(LS_RASCS, rascs.slice(0,50));
-}
-function removeRasc(id){ lsSet(LS_RASCS, getRascs().filter(function(r){ return r.id!==id; })); }
-
-function getCtcs(){ return lsGet(LS_CTCS); }
-function saveCtcs(v){ lsSet(LS_CTCS,v); }
-
-// ── Utilitários ───────────────────────────────────────
 function toast(msg){
   var t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
-  setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  setTimeout(function(){ t.classList.remove('show'); },2200);
 }
 
 function esc(s){
   return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');
 }
 
+// Substitui {{VAR}} no template pelos valores do dicionário
 function fillD(tmpl, data){
   var r=String(tmpl);
-  Object.keys(data).forEach(function(k){ r=r.split('{{'+k+'}}').join(data[k]); });
+  Object.keys(data).forEach(function(k){
+    r=r.split('{{'+k+'}}').join(data[k]);
+  });
   return r;
 }
 
-function guardarRascunho(titulo, texto, modulo){
-  saveRasc(titulo, texto, modulo);
-  toast('📝 Rascunho guardado');
+// Calcula o nome completo com tratamento
+function nomeCompleto(nome, trat){
+  if(trat==='sem' || trat==='neutro') return nome || '[nome]';
+  return (trat + ' ' + (nome || '[nome]')).trim();
 }
 
-// ── Memória dos módulos ──────────────────────────────
+// ═══════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════
+
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
+function lsSet(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
+
+// Favoritos
+function getFavs(){ return lsGet('clm_favs'); }
+function isFav(txt){ return getFavs().some(function(f){ return f.texto===txt; }); }
+function toggleFav(txt,cat){
+  var favs=getFavs();
+  var idx=favs.findIndex(function(f){ return f.texto===txt; });
+  if(idx>=0){ favs.splice(idx,1); lsSet('clm_favs',favs); return false; }
+  favs.unshift({id:Date.now(),texto:txt,categoria:cat||'Geral',data:new Date().toLocaleDateString('pt-PT')});
+  lsSet('clm_favs',favs); return true;
+}
+function removeFav(id){ lsSet('clm_favs',getFavs().filter(function(f){ return f.id!==id; })); }
+
+// Rascunhos
+function getRascs(){ return lsGet('clm_rascs'); }
+function saveRasc(titulo,texto,modulo){
+  var rascs=getRascs();
+  rascs.unshift({id:Date.now(),titulo:titulo||'Sem título',texto:texto,modulo:modulo,
+    data:new Date().toLocaleDateString('pt-PT'),
+    hora:new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})});
+  lsSet('clm_rascs',rascs.slice(0,50));
+}
+function removeRasc(id){ lsSet('clm_rascs',getRascs().filter(function(r){ return r.id!==id; })); }
+function guardarRascunho(titulo,texto,modulo){ saveRasc(titulo,texto,modulo); toast('📝 Rascunho guardado'); }
+
+// Contactos
+function getCtcs(){ return lsGet('clm_ctcs'); }
+function saveCtcs(v){ lsSet('clm_ctcs',v); }
+
+// Memória de campos por módulo
 function memSave(mod, ids){
   var data={};
   ids.forEach(function(id){
-    var el=document.getElementById(id); if(el) data[id]=el.value;
+    var el=document.getElementById(id);
+    if(el) data[id]=el.value;
   });
-  localStorage.setItem('clm_'+mod, JSON.stringify(data));
+  localStorage.setItem('clm_mem_'+mod, JSON.stringify(data));
 }
 function memLoad(mod, ids){
   try{
-    var data=JSON.parse(localStorage.getItem('clm_'+mod)||'{}');
+    var data=JSON.parse(localStorage.getItem('clm_mem_'+mod)||'{}');
     ids.forEach(function(id){
       var el=document.getElementById(id);
       if(el && data[id]!==undefined) el.value=data[id];
     });
   }catch(e){}
 }
-function memClear(mod){
-  localStorage.removeItem('clm_'+mod);
-}
+function memClear(mod){ localStorage.removeItem('clm_mem_'+mod); }
 
-// ── Navegação ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// NAVEGAÇÃO
+// ═══════════════════════════════════════════════════════
+
 function navegar(pagina){
   document.querySelectorAll('.nav-item').forEach(function(n){
     n.classList.toggle('ativo', n.dataset.p===pagina);
   });
   var c=document.getElementById('content');
-  if(pagina==='home')        { c.innerHTML=pgHome(); }
-  else if(pagina==='proposta')    { c.innerHTML=pgProposta(); pInit(); }
-  else if(pagina==='reporte')     { c.innerHTML=pgReporte(); rInit(); }
+  if(pagina==='home')         c.innerHTML=pgHome();
+  else if(pagina==='proposta')    { c.innerHTML=pgProposta();    pInit(); }
+  else if(pagina==='reporte')     { c.innerHTML=pgReporte();     rInit(); }
   else if(pagina==='processuais') { c.innerHTML=pgProcessuais(); prInit(); }
-  else if(pagina==='biblioteca')  { c.innerHTML=pgBiblioteca(); bibInit(); }
-  else if(pagina==='respostas')   { c.innerHTML=pgRespostas(); rrInit(); }
-  else if(pagina==='favoritos')   { c.innerHTML=pgFavoritos(); }
-  else if(pagina==='rascunhos')   { c.innerHTML=pgRascunhos(); }
+  else if(pagina==='biblioteca')  { c.innerHTML=pgBiblioteca();  bibInit(); }
+  else if(pagina==='respostas')   { c.innerHTML=pgRespostas();   rrInit(); }
+  else if(pagina==='favoritos')   c.innerHTML=pgFavoritos();
+  else if(pagina==='rascunhos')   c.innerHTML=pgRascunhos();
   window.scrollTo(0,0);
 }
 
-// ── Blocos partilhados ────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// BLOCOS — funções partilhadas por todos os módulos
+// ═══════════════════════════════════════════════════════
+
+// Gera o HTML de um bloco com as suas opções
+// NOTA: os valores das opções usam \n directamente (character real)
+// O mkBloco converte \n para &#10; no data-v para armazenamento seguro em HTML
+function mkBloco(id, num, titulo, cor, opcs, semTxt, livrePH){
+  var opcsHtml = opcs.map(function(o){
+    // Guardar o valor com \n convertido para &#10; no atributo HTML
+    var dataVal = o[0].replace(/\n/g, '&#10;').replace(/"/g, '&quot;');
+    return '<div class="opc" data-v="' + dataVal + '" onclick="selOpc(\'' + id + '\',\'' + cor + '\',this)">' + o[1] + '</div>';
+  }).join('');
+
+  return '<div class="bloco" id="' + id + '">' +
+    '<div class="bloco-hdr" onclick="togBloco(\'' + id + '\')">' +
+    '<span class="bnum">' + num + '</span>' +
+    '<span class="btit">' + titulo + '</span>' +
+    '<span class="bsel" id="s-' + id + '"></span>' +
+    '<span class="chev">▼</span></div>' +
+    '<div class="opcoes" id="o-' + id + '">' + opcsHtml +
+    '<div class="opc opc-sem" data-v="" onclick="selOpc(\'' + id + '\',\'' + cor + '\',this)">' + (semTxt||'(nenhum)') + '</div>' +
+    '<div class="opc-livre" onclick="this.querySelector(\'input\').focus()">' +
+    '<input class="opc-livre-inp" id="l-' + id + '" placeholder="' + (livrePH||'Outro...') + '" oninput="livreOpc(\'' + id + '\',\'' + cor + '\',this)"></div>' +
+    '<button class="btn-bib" onclick="modalBibAbrir(\'' + id + '\')">🔍 Pesquisar na biblioteca</button>' +
+    '</div></div>';
+}
+
 function togBloco(id){
   var el=document.getElementById(id);
   if(el) el.classList.toggle('aberto');
 }
 
 function selOpc(blocoId, cor, el){
+  // Limpar selecções anteriores
   var opts=document.getElementById('o-'+blocoId);
   if(opts) opts.querySelectorAll('.opc').forEach(function(o){ o.classList.remove('av','aa'); });
-  el.classList.add(cor==='a'?'aa':'av');
+  // Marcar esta opção
+  el.classList.add(cor==='a' ? 'aa' : 'av');
+  // Actualizar bloco
   var bloco=document.getElementById(blocoId);
-  if(bloco){ bloco.classList.remove('aberto','sv','sa'); bloco.classList.add(cor==='a'?'sa':'sv'); }
+  if(bloco){ bloco.classList.remove('aberto','sv','sa'); bloco.classList.add(cor==='a' ? 'sa' : 'sv'); }
+  // Actualizar sumário
   var s=document.getElementById('s-'+blocoId);
-  if(s) s.textContent=el.classList.contains('opc-sem')?'(nenhum)':el.textContent.slice(0,28);
-  // Pré-preencher campo livre com o valor da opção — permite edição posterior
+  if(s) s.textContent = el.classList.contains('opc-sem') ? '(nenhum)' : el.textContent.slice(0,28);
+  // Pré-preencher campo livre com o valor da opção para permitir edição
   var liv=document.getElementById('l-'+blocoId);
   if(liv){
-    var val=el.dataset.v||'';
-    liv.value=val.replace(/&#10;/g,'\n');
-    liv.placeholder=val?'Edita aqui se necessário...':'';
+    // Converter &#10; para \n real no campo editável
+    var val = (el.dataset.v || '').replace(/&#10;/g, '\n');
+    liv.value = val;
+    liv.placeholder = val ? 'Edita aqui se necessário...' : (blocoId.includes('bp') ? 'Outra opção...' : 'Outro...');
   }
   triggerRender();
 }
 
 function livreOpc(blocoId, cor, inp){
+  // Quando edita o campo livre, limpar selecção de opção
   var opts=document.getElementById('o-'+blocoId);
   if(opts) opts.querySelectorAll('.opc').forEach(function(o){ o.classList.remove('av','aa'); });
   var bloco=document.getElementById(blocoId);
   var s=document.getElementById('s-'+blocoId);
   if(inp.value.trim()){
-    if(bloco) bloco.classList.add(cor==='a'?'sa':'sv');
-    if(s) s.textContent=inp.value.slice(0,28);
+    if(bloco) bloco.classList.add(cor==='a' ? 'sa' : 'sv');
+    if(s) s.textContent = inp.value.slice(0,28);
   } else {
     if(bloco) bloco.classList.remove('sv','sa');
-    if(s) s.textContent='';
+    if(s) s.textContent = '';
   }
   triggerRender();
 }
 
+// Obter o valor de um bloco
+// Prioridade: campo livre > opção seleccionada
+// A conversão de &#10; para \n acontece AQUI e apenas aqui
 function getBVal(blocoId){
   var opts=document.getElementById('o-'+blocoId);
   if(!opts) return undefined;
-  var ativo=opts.querySelector('.opc.av,.opc.aa');
+  // Campo livre tem prioridade (já tem \n reais porque foi convertido no selOpc ou escrito pelo utilizador)
   var liv=document.getElementById('l-'+blocoId);
   if(liv && liv.value.trim()) return liv.value.trim();
+  // Opção seleccionada — converter &#10; para \n real
+  var ativo=opts.querySelector('.opc.av,.opc.aa');
   if(ativo){
-    var val=ativo.dataset.v!==undefined ? ativo.dataset.v : null;
-    if(val) val=val.replace(/&#10;/g,'\n');
+    var val = ativo.dataset.v !== undefined ? ativo.dataset.v : null;
+    if(val) val = val.replace(/&#10;/g, '\n');
     return val;
   }
   return undefined;
@@ -434,244 +482,237 @@ function resetBlocos(ids){
   ids.forEach(function(id){
     var opts=document.getElementById('o-'+id);
     if(opts) opts.querySelectorAll('.opc').forEach(function(o){ o.classList.remove('av','aa'); });
-    var bloco=document.getElementById(id);
-    if(bloco) bloco.classList.remove('sv','sa','aberto');
+    var bloco=document.getElementById(id); if(bloco) bloco.classList.remove('sv','sa','aberto');
     var s=document.getElementById('s-'+id); if(s) s.textContent='';
     var l=document.getElementById('l-'+id); if(l) l.value='';
   });
 }
 
 function triggerRender(){
-  if(document.getElementById('p-prev'))  { pRender(); memSave('proposta'); }
-  if(document.getElementById('r-prev'))  { rRender(); memSave('reporte'); }
-  if(document.getElementById('pr-prev')) { prRender(); memSave('processuais'); }
+  if(document.getElementById('p-prev'))  pRender();
+  if(document.getElementById('r-prev'))  rRender();
+  if(document.getElementById('pr-prev')) prRender();
 }
 
-function mkBloco(id, num, titulo, cor, opcs, semTxt, livrePH){
-  var opcsHtml=opcs.map(function(o){
-    var val=o[0].replace(/\n/g,'&#10;').replace(/'/g,'&#39;');
-    return '<div class="opc" data-v="'+val+
-           '" onclick="selOpc(\''+id+'\',\''+cor+'\',this)">'+o[1]+'</div>';
-  }).join('');
-  return '<div class="bloco" id="'+id+'">'+
-    '<div class="bloco-hdr" onclick="togBloco(\''+id+'\')">'+
-    '<span class="bnum">'+num+'</span><span class="btit">'+titulo+'</span>'+
-    '<span class="bsel" id="s-'+id+'"></span><span class="chev">▼</span></div>'+
-    '<div class="opcoes" id="o-'+id+'">'+opcsHtml+
-    '<div class="opc opc-sem" data-v="" onclick="selOpc(\''+id+'\',\''+cor+'\',this)">'+(semTxt||'(nenhum)')+'</div>'+
-    '<div class="opc-livre" onclick="this.querySelector(\'input\').focus()">'+
-    '<input class="opc-livre-inp" id="l-'+id+'" placeholder="'+(livrePH||'Outro...')+'" oninput="livreOpc(\''+id+'\',\''+cor+'\',this)"></div>'+
-    '<button class="btn-bib" onclick="modalBibAbrir(\''+id+'\')">🔍 Pesquisar na biblioteca</button>'+
-    '</div></div>';
-}
+// ═══════════════════════════════════════════════════════
+// HOMEPAGE
+// ═══════════════════════════════════════════════════════
 
-// ── HOMEPAGE ──────────────────────────────────────────
 function pgHome(){
-  return '<div class="page-eyebrow">Comunicação LM</div>'+
-    '<div class="page-title">Olá, <em>Hélder</em> 👋</div>'+
-    '<div class="page-sub">O teu assistente de comunicação profissional.</div>'+
-    '<div class="home-grid">'+
-    hcard('📩','Envio de Proposta','Constrói mensagens de envio de proposta por blocos.','proposta')+
-    hcard('⚠️','Reporte de Problema','Reporta situações com PC/OS, artigos e destinatários.','reporte')+
-    hcard('💬','Mensagens Processuais','Respostas internas e para clientes com biblioteca integrada.','processuais')+
-    hcard('📚','Biblioteca de Frases','+200 frases organizadas. Pesquisa, copia e favoritos.','biblioteca')+
-    hcard('💭','Respostas Rápidas','Mensagens curtas para o dia a dia — folga, confirmações, agendamentos.','respostas')+
-    hcard('⭐','Favoritos','As frases que guardaste para acesso rápido.','favoritos')+
-    hcard('📝','Rascunhos','Mensagens guardadas para continuar mais tarde.','rascunhos')+
+  return '<div class="page-eyebrow">Comunicação LM</div>' +
+    '<div class="page-title">Olá, <em>Hélder</em> 👋</div>' +
+    '<div class="page-sub">O teu assistente de comunicação profissional.</div>' +
+    '<div class="home-grid">' +
+    hcard('📩','Envio de Proposta','Constrói mensagens de envio de proposta por blocos.','proposta') +
+    hcard('⚠️','Reporte de Problema','Reporta situações com PC/OS, artigos e destinatários.','reporte') +
+    hcard('💬','Mensagens Processuais','Respostas internas e para clientes com biblioteca integrada.','processuais') +
+    hcard('📚','Biblioteca de Frases','+200 frases organizadas. Pesquisa, copia e favoritos.','biblioteca') +
+    hcard('💭','Respostas Rápidas','Mensagens curtas para o dia a dia — folga, confirmações, atrasos.','respostas') +
+    hcard('⭐','Favoritos','As frases que guardaste para acesso rápido.','favoritos') +
+    hcard('📝','Rascunhos','Mensagens guardadas para continuar mais tarde.','rascunhos') +
     '</div>';
 }
+
 function hcard(ico,titulo,desc,pagina){
-  return '<div class="hcard" onclick="navegar(\''+pagina+'\')">'+
-    '<div class="hcard-ico">'+ico+'</div>'+
-    '<div class="hcard-titulo">'+titulo+'</div>'+
-    '<div class="hcard-desc">'+desc+'</div>'+
+  return '<div class="hcard" onclick="navegar(\'' + pagina + '\')">' +
+    '<div class="hcard-ico">' + ico + '</div>' +
+    '<div class="hcard-titulo">' + titulo + '</div>' +
+    '<div class="hcard-desc">' + desc + '</div>' +
     '<div class="hcard-arr">Abrir →</div></div>';
 }
 
-// ── PROPOSTA ──────────────────────────────────────────
-var _pCanal='email';
+// ═══════════════════════════════════════════════════════
+// ENVIO DE PROPOSTA
+// ═══════════════════════════════════════════════════════
+
+var _pCanal = 'email';
+var P_MEM = ['p-nome','p-tipo','p-link','p-trat'];
 
 function pgProposta(){
-  return '<div class="page-eyebrow">Módulo</div>'+
-    '<div class="page-title">📩 Envio de <em>Proposta</em></div>'+
-    '<div class="page-sub">Constrói a mensagem de envio bloco a bloco.</div>'+
-    '<div class="cstr"><div class="cstr-esq">'+
-    '<div class="sec-lbl">Dados</div>'+
-    '<div class="grid-2" style="margin-bottom:10px">'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="p-nome" placeholder="Ex: Ana" oninput="pRender()"></div>'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>'+
-    '<select class="inp" id="p-trat" onchange="pRender()">'+
-    '<option value="Sr.">Sr.</option>'+
-    '<option value="Dª">Dª</option>'+
-    '<option value="neutro">(neutro — sem tratamento)</option>'+
-    '<option value="sem">(sem — só o nome)</option>'+
-    '</select></div></div>'+
-    '<div class="grid-2" style="margin-bottom:14px">'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Tipo de projecto</label><input class="inp" id="p-tipo" placeholder="Ex: Cozinha" oninput="pRender()"></div>'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Link da proposta</label><input class="inp" id="p-link" placeholder="https://..." oninput="pRender()"></div></div>'+
-    '<div class="sec-lbl">Canal</div>'+
-    '<div class="canal-grid">'+
-    '<div class="canal-btn sel" id="p-email" onclick="pCanal(\'email\')">✉️ Email</div>'+
-    '<div class="canal-btn" id="p-wapp" onclick="pCanal(\'whatsapp\')">💬 WhatsApp</div></div>'+
-    '<div class="sec-lbl">Constrói a mensagem</div>'+
-    '<div class="blocos">'+
+  return '<div class="page-eyebrow">Módulo</div>' +
+    '<div class="page-title">📩 Envio de <em>Proposta</em></div>' +
+    '<div class="page-sub">Constrói a mensagem de envio bloco a bloco.</div>' +
+    '<div class="cstr"><div class="cstr-esq">' +
+    '<div class="sec-lbl">Dados</div>' +
+    '<div class="grid-2" style="margin-bottom:10px">' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="p-nome" placeholder="Ex: Ana" oninput="pRender()"></div>' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>' +
+    '<select class="inp" id="p-trat" onchange="pRender()">' +
+    '<option value="Sr.">Sr.</option>' +
+    '<option value="Da">Dª</option>' +
+    '<option value="neutro">(neutro)</option>' +
+    '<option value="sem">(sem)</option>' +
+    '</select></div></div>' +
+    '<div class="grid-2" style="margin-bottom:14px">' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Tipo de projecto</label><input class="inp" id="p-tipo" placeholder="Ex: Cozinha" oninput="pRender()"></div>' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Link da proposta</label><input class="inp" id="p-link" placeholder="https://..." oninput="pRender()"></div></div>' +
+    '<div class="sec-lbl">Canal</div>' +
+    '<div class="canal-grid">' +
+    '<div class="canal-btn sel" id="p-email" onclick="pCanal(\'email\')">✉️ Email</div>' +
+    '<div class="canal-btn" id="p-wapp" onclick="pCanal(\'whatsapp\')">💬 WhatsApp</div></div>' +
+    '<div class="sec-lbl">Constrói a mensagem</div>' +
+    '<div class="blocos">' +
     mkBloco('bp-1','1','Saudação','v',[
-      ['Bom dia {{NOME}},','Bom dia Sr./Dª [nome],'],
-      ['Boa tarde {{NOME}},','Boa tarde Sr./Dª [nome],'],
-      ['Olá {{NOME}}!','Olá [nome]!']
-    ],'(sem saudação)','Outra saudação...')+
+      ['Bom dia {{NOME}},', 'Bom dia Sr./Dª [nome],'],
+      ['Boa tarde {{NOME}},', 'Boa tarde Sr./Dª [nome],'],
+      ['Olá {{NOME}}!', 'Olá [nome]!']
+    ],'(sem saudação)','Outra saudação...') +
     mkBloco('bp-2','2','Abertura','v',[
-      ['Na sequência do que definimos em loja, partilho o link do projecto de {{TIPO}}: {{LINK}}','Na sequência do que definimos em loja...'],
-      ['O seu projecto de {{TIPO}} está pronto — pode ver aqui: {{LINK}}','O projecto está pronto — pode ver aqui'],
-      ['Partilho o link com o projecto de {{TIPO}} para sua análise: {{LINK}}','Partilho o link para sua análise'],
-      ['Segue o link do projecto: {{LINK}}','Segue o link do projecto']
-    ],'(sem abertura)','Outra abertura...')+
+      ['Na sequência do que definimos em loja, preparei a proposta conforme alinhado. Pode ver aqui: {{LINK}}', 'Na sequência do que definimos em loja...'],
+      ['Na sequência da nossa reunião, desenvolvi o projecto conforme alinhado. Pode ver aqui: {{LINK}}', 'Na sequência da nossa reunião...'],
+      ['Após a nossa conversa, preparei a proposta de acordo com o que definimos: {{LINK}}', 'Após a nossa conversa...'],
+      ['Conforme combinado, avancei com o desenvolvimento da solução. Pode ver aqui: {{LINK}}', 'Conforme combinado...'],
+      ['Com base no que me indicou, preparei uma solução alinhada com o que procura: {{LINK}}', 'Com base no que me indicou...'],
+      ['Tive em conta as suas preferências e organizei o projecto nesse sentido: {{LINK}}', 'Tive em conta as suas preferências...'],
+      ['Procurei reflectir no projecto aquilo que valorizou na nossa conversa: {{LINK}}', 'Procurei reflectir na nossa conversa...'],
+      ['Dando continuidade ao que vimos, ajustei o projecto de acordo com o que falámos: {{LINK}}', 'Dando continuidade ao que vimos...'],
+      ['Para podermos validar e avançar, partilho o link do projecto: {{LINK}}', 'Para podermos validar e avançar...']
+    ],'(sem abertura)','Outra abertura...') +
     mkBloco('bp-3','3','Fecho','v',[
-      ['Se vir algum ponto a ajustar, diga-me.','Se vir algum ponto a ajustar, diga-me.'],
-      ['Se houver algum ponto a ajustar, não hesite em me contactar.','Não hesite em me contactar.'],
-      ['Fico a aguardar o seu feedback.','Fico a aguardar o seu feedback.'],
-      ['Preciso do seu feedback para conseguirmos avançar.','Preciso do seu feedback para avançar.'],
-      ['Diga-me se está de acordo ou o que pretende ajustar.','Diga-me se está de acordo.']
-    ],'(sem fecho)','Outro fecho...')+
+      ['Se houver algum ponto a ajustar, diga-me.', 'Se houver algum ponto a ajustar, diga-me.'],
+      ['Se quiser rever algum detalhe, não hesite em me contactar.', 'Se quiser rever algum detalhe...'],
+      ['Caso surja alguma questão, estou à inteira disposição.', 'Caso surja alguma questão...'],
+      ['Fico a aguardar o seu feedback. Se houver algum ponto a ajustar, diga-me.', 'Fico a aguardar feedback...']
+    ],'(sem fecho)','Outro fecho...') +
     mkBloco('bp-4','4','Despedida','v',[
-      ['Um abraço,&#10;Hélder','Um abraço, Hélder'],
-      ['Com os melhores cumprimentos,&#10;Hélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos']
-    ],'(sem despedida)','Outra despedida...')+
-    '</div></div>'+
-    '<div class="cstr-dir">'+
-    '<div class="prev-lbl">Pré-visualização</div>'+
-    '<div class="prev-box" id="p-prev"><span class="ph">Selecciona os blocos para construir a mensagem.</span></div>'+
-    '<button class="btn-p v" onclick="pCopiarAssunto()">Copiar assunto</button>'+
-    '<button class="btn-p v" onclick="pCopiar()">Copiar mensagem</button>'+
-    '<button class="btn-p am" onclick="pGuardar()">📝 Guardar rascunho</button>'+
-    '<button class="btn-s" onclick="pReset()">↺ Recomeçar</button>'+
+      ['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin', 'Com os melhores cumprimentos'],
+      ['Cumprimentos,\nHélder Melo | VPR · Leroy Merlin', 'Cumprimentos'],
+      ['Obrigado,\nHélder Melo | VPR · Leroy Merlin', 'Obrigado'],
+      ['Obrigado e bom dia,\nHélder Melo | VPR · Leroy Merlin', 'Obrigado e bom dia'],
+      ['Até breve,\nHélder Melo | VPR · Leroy Merlin', 'Até breve'],
+      ['Obrigado, fico a aguardar.\nHélder Melo | VPR · Leroy Merlin', 'Obrigado, fico a aguardar'],
+      ['Um abraço,\nHélder Melo | VPR · Leroy Merlin', 'Um abraço']
+    ],'(sem despedida)','Outra despedida...') +
+    '</div></div>' +
+    '<div class="cstr-dir">' +
+    '<div class="prev-lbl">Pré-visualização</div>' +
+    '<div class="prev-box" id="p-prev"><span class="ph">Selecciona os blocos para construir a mensagem.</span></div>' +
+    '<button class="btn-p v" onclick="pCopiarAssunto()">Copiar assunto</button>' +
+    '<button class="btn-p v" onclick="pCopiar()">Copiar mensagem</button>' +
+    '<button class="btn-p am" onclick="pGuardar()">📝 Guardar rascunho</button>' +
+    '<button class="btn-s" onclick="pReset()">↺ Recomeçar</button>' +
     '</div></div>';
 }
 
 function pInit(){
   _pCanal='email';
-  memLoad('proposta',['p-nome','p-tipo','p-link','p-trat']);
-  setTimeout(pRender,0);
-  memRestore('proposta');
-  var canal=document.getElementById('p-canal-mem');
-  // Restaurar canal se guardado
-  var raw=sessionStorage.getItem('clm_mem_proposta');
-  if(raw){ try{ var d=JSON.parse(raw); if(d['p-canal']) pCanal(d['p-canal']); }catch(e){} }
-  pRender();
+  memLoad('proposta', P_MEM);
+  setTimeout(pRender, 0);
 }
 
 function pCanal(c){
   _pCanal=c;
-  memSave('proposta');
   var e=document.getElementById('p-email'), w=document.getElementById('p-wapp');
-  if(e) e.classList.toggle('sel',c==='email');
-  if(w) w.classList.toggle('sel',c==='whatsapp');
+  if(e) e.classList.toggle('sel', c==='email');
+  if(w) w.classList.toggle('sel', c==='whatsapp');
   pRender();
 }
 
 function pRender(){
-  memSave('proposta',['p-nome','p-tipo','p-link','p-trat']);
-  var nome=document.getElementById('p-nome')?.value.trim()||'';
-  var trat=document.getElementById('p-trat')?.value||'Sr.';
-  var tipo=document.getElementById('p-tipo')?.value.trim()||'';
-  var link=document.getElementById('p-link')?.value.trim()||'';
-  var nomeCompleto = trat==='sem' ? (nome||'[nome]') :
-                    trat==='neutro' ? (nome||'[nome]') :
-                    (trat+' '+(nome||'[nome]')).trim();
-  var art  = trat==='Dª' ? 'a' : 'o';
-  var dart = trat==='Dª' ? 'da' : 'do';
-  var d={NOME:nomeCompleto,TIPO:tipo||'[tipo]',LINK:link||'[link]',ART:art,DART:dart,TRAT:trat==='sem'||trat==='neutro'?'':trat};
-  var b1=getBVal('bp-1'),b2=getBVal('bp-2'),b3=getBVal('bp-3'),b4=getBVal('bp-4');
+  var nome  = document.getElementById('p-nome') ? document.getElementById('p-nome').value.trim() : '';
+  var trat  = document.getElementById('p-trat') ? document.getElementById('p-trat').value : 'Sr.';
+  var tipo  = document.getElementById('p-tipo') ? document.getElementById('p-tipo').value.trim() : '';
+  var link  = document.getElementById('p-link') ? document.getElementById('p-link').value.trim() : '';
+  var nc    = nomeCompleto(nome, trat);
+  var art   = trat==='Da' ? 'a' : 'o';
+  var dart  = trat==='Da' ? 'da' : 'do';
+  var d     = {NOME:nc, TIPO:tipo||'[tipo]', LINK:link||'[link]', ART:art, DART:dart};
+  var b1=getBVal('bp-1'), b2=getBVal('bp-2'), b3=getBVal('bp-3'), b4=getBVal('bp-4');
   var prev=document.getElementById('p-prev'); if(!prev) return;
   if([b1,b2,b3,b4].every(function(v){ return v===undefined; })){
     prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>'; return;
   }
-  var sep=_pCanal==='email'?'\n\n':'\n';
-  var pp=[b1,b2,b3,b4].filter(function(v){ return v; }).map(function(v){ return fillD(v,d); });
-  prev.innerText=pp.join(sep);
+  var sep = _pCanal==='email' ? '\n\n' : '\n';
+  var pp  = [b1,b2,b3,b4].filter(function(v){ return v; }).map(function(v){ return fillD(v,d); });
+  prev.innerText = pp.join(sep);
+  memSave('proposta', P_MEM);
 }
 
 function pCopiarAssunto(){
-  var nome=document.getElementById('p-nome')?.value.trim()||'[nome]';
-  var trat=document.getElementById('p-trat')?.value||'Sr.';
-  var tipo=document.getElementById('p-tipo')?.value.trim()||'[tipo]';
-  var nc=trat==='sem'||trat==='neutro'?nome:(trat+' '+nome).trim();
-  navigator.clipboard.writeText('Proposta '+tipo+' — '+nc).then(function(){ toast('Assunto copiado!'); });
+  var nome = document.getElementById('p-nome') ? document.getElementById('p-nome').value.trim() : '[nome]';
+  var trat = document.getElementById('p-trat') ? document.getElementById('p-trat').value : 'Sr.';
+  var tipo = document.getElementById('p-tipo') ? document.getElementById('p-tipo').value.trim() : '[tipo]';
+  var nc   = nomeCompleto(nome, trat);
+  navigator.clipboard.writeText('Proposta ' + tipo + ' — ' + nc).then(function(){ toast('Assunto copiado!'); });
 }
 
 function pCopiar(){
-  var txt=document.getElementById('p-prev')?.innerText;
-  if(!txt||txt.includes('Selecciona')) return;
+  var txt=document.getElementById('p-prev') ? document.getElementById('p-prev').innerText : '';
+  if(!txt || txt.includes('Selecciona')) return;
   navigator.clipboard.writeText(txt).then(function(){ toast('✓ Mensagem copiada!'); });
 }
 
 function pGuardar(){
-  var txt=document.getElementById('p-prev')?.innerText;
-  if(!txt||txt.includes('Selecciona')){ toast('Nada para guardar'); return; }
-  var nome=document.getElementById('p-nome')?.value.trim()||'';
+  var txt=document.getElementById('p-prev') ? document.getElementById('p-prev').innerText : '';
+  if(!txt || txt.includes('Selecciona')){ toast('Nada para guardar'); return; }
+  var nome=document.getElementById('p-nome') ? document.getElementById('p-nome').value.trim() : '';
   guardarRascunho('Proposta'+(nome?' — '+nome:''), txt, 'proposta');
 }
 
 function pReset(){
   ['p-nome','p-link','p-tipo'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
   var pt=document.getElementById('p-trat'); if(pt) pt.value='Sr.';
-  memClear('proposta');
   resetBlocos(['bp-1','bp-2','bp-3','bp-4']);
   var prev=document.getElementById('p-prev');
   if(prev) prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>';
+  memClear('proposta');
 }
 
-// ── REPORTE ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// REPORTE DE PROBLEMA
+// ═══════════════════════════════════════════════════════
+
 var _rAid=0, _rAssunto='';
+var R_MEM = ['r-nome','r-trat','r-pc','r-os','r-desc'];
 
 function pgReporte(){
-  return '<div class="page-eyebrow">Módulo</div>'+
-    '<div class="page-title">⚠️ Reporte de <em>Problema</em></div>'+
-    '<div class="page-sub">Reporta situações aos colegas com PC/OS, artigos e destinatários.</div>'+
-    '<div class="cstr"><div class="cstr-esq">'+
-    '<div class="sec-lbl">Dados do cliente</div>'+
-    '<div class="grid-2" style="margin-bottom:14px">'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="r-nome" placeholder="Ex: Marco" oninput="rRender()"></div>'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>'+
-    '<select class="inp" id="r-trat" onchange="rRender()">'+
-    '<option value="Sr.">Sr.</option>'+
-    '<option value="Dª">Dª</option>'+
-    '<option value="neutro">(neutro)</option>'+
-    '<option value="sem">(sem)</option>'+
-    '</select></div></div>'+
-    '<div class="sec-lbl">Referências</div>'+
-    '<div class="refs-grid">'+
-    '<div class="ref-card" id="rc-pc"><div class="ref-badge">PC · Projecto</div><div class="ref-desc">Identifica artigos e materiais</div><input class="ref-inp" id="r-pc" placeholder="Ex: 200153" oninput="rRefCard(\'pc\');rRender()"></div>'+
-    '<div class="ref-card" id="rc-os"><div class="ref-badge">OS · Ordem de Serviço</div><div class="ref-desc">Identifica prestação de serviço técnico</div><input class="ref-inp" id="r-os" placeholder="Ex: 562232" oninput="rRefCard(\'os\');rRender()"></div>'+
-    '</div>'+
-    '<div class="sec-lbl" style="margin-top:4px">Destinatários</div>'+
-    '<div class="dest-wrap">'+
-    '<div class="dest-hdr"><div class="dest-hdr-t">Selecciona os destinatários</div><button class="btn-gerir" onclick="modalCtcAbrir()">Gerir contactos</button></div>'+
-    '<div class="dest-body"><div class="dest-lista" id="r-dest-lista"></div>'+
-    '<div class="dest-acoes"><button class="btn-cd" onclick="rCopiarDest(\'para\')">Copiar Para:</button><button class="btn-cd" onclick="rCopiarDest(\'cc\')">Copiar CC:</button></div></div></div>'+
-    '<div class="sec-lbl">Constrói a mensagem</div><div class="blocos">'+
+  return '<div class="page-eyebrow">Módulo</div>' +
+    '<div class="page-title">⚠️ Reporte de <em>Problema</em></div>' +
+    '<div class="page-sub">Reporta situações aos colegas com PC/OS, artigos e destinatários.</div>' +
+    '<div class="cstr"><div class="cstr-esq">' +
+    '<div class="sec-lbl">Dados do cliente</div>' +
+    '<div class="grid-2" style="margin-bottom:14px">' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="r-nome" placeholder="Ex: Marco" oninput="rRender()"></div>' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>' +
+    '<select class="inp" id="r-trat" onchange="rRender()">' +
+    '<option value="Sr.">Sr.</option>' +
+    '<option value="Da">Dª</option>' +
+    '<option value="neutro">(neutro)</option>' +
+    '<option value="sem">(sem)</option>' +
+    '</select></div></div>' +
+    '<div class="sec-lbl">Referências</div>' +
+    '<div class="refs-grid">' +
+    '<div class="ref-card" id="rc-pc"><div class="ref-badge">PC · Projecto</div><div class="ref-desc">Identifica artigos e materiais</div><input class="ref-inp" id="r-pc" placeholder="Ex: 200153" oninput="rRefCard(\'pc\');rRender()"></div>' +
+    '<div class="ref-card" id="rc-os"><div class="ref-badge">OS · Ordem de Serviço</div><div class="ref-desc">Identifica prestação de serviço técnico</div><input class="ref-inp" id="r-os" placeholder="Ex: 562232" oninput="rRefCard(\'os\');rRender()"></div>' +
+    '</div>' +
+    '<div class="sec-lbl" style="margin-top:4px">Destinatários</div>' +
+    '<div class="dest-wrap">' +
+    '<div class="dest-hdr"><div class="dest-hdr-t">Selecciona os destinatários</div><button class="btn-gerir" onclick="modalCtcAbrir()">Gerir contactos</button></div>' +
+    '<div class="dest-body"><div class="dest-lista" id="r-dest-lista"></div>' +
+    '<div class="dest-acoes"><button class="btn-cd" onclick="rCopiarDest(\'para\')">Copiar Para:</button><button class="btn-cd" onclick="rCopiarDest(\'cc\')">Copiar CC:</button></div></div></div>' +
+    '<div class="sec-lbl">Constrói a mensagem</div><div class="blocos">' +
     mkBloco('rb-1','1','Saudação','v',[
       ['Bom dia,','Bom dia,'],['Boa tarde,','Boa tarde,'],['Colegas,','Colegas,']
-    ],'(sem saudação)','Outra saudação...')+
+    ],'(sem saudação)','Outra saudação...') +
     mkBloco('rb-2','2','Origem do problema','v',[
-      ['Na sequência de uma reclamação do cliente {{NOME}}{{REFS}}, venho reportar a seguinte situação:','Na sequência de uma reclamação do cliente...'],
-      ['O técnico reportou-me a seguinte situação na obra do cliente {{NOME}}{{REFS}}:','O técnico reportou a seguinte situação...'],
-      ['Na sequência de uma visita à obra do cliente {{NOME}}{{REFS}}, identifiquei os seguintes problemas:','Na sequência de uma visita à obra...'],
-      ['O cliente {{NOME}}{{REFS}} manifestou insatisfação com a sua obra. Venho reportar a situação:','O cliente manifestou insatisfação...'],
-      ['O cliente entrou em contacto a solicitar actualização sobre a devolução do valor referente a [situação].','Devolução — cliente solicita actualização...'],
-      ['Está pendente a devolução ao cliente de um valor associado a [excedente/devolução].','Devolução pendente ao cliente...'],
-      ['Existe um valor por regularizar com o cliente, relativo a [descrição].','Valor por regularizar com o cliente...'],
-      ['A visita técnica prevista para [data] não foi realizada.','Visita técnica não realizada...'],
-      ['A entrega de material agendada para [data] não ocorreu conforme previsto.','Entrega de material não ocorreu...'],
-      ['Verificou-se um atraso na execução de [tarefa/serviço].','Atraso na execução...']
-    ],'(sem origem)','Outra origem...')+
-    '</div>'+
-    '<div class="sec-lbl">Descrição do problema</div>'+
-    '<div class="campo"><textarea class="textarea" id="r-desc" placeholder="Descreve o problema..." oninput="rRender()" rows="4"></textarea></div>'+
-    '<div class="sec-lbl">Artigos envolvidos</div>'+
-    '<div style="background:var(--paper);border:1.5px solid var(--paper-3);border-radius:var(--r);padding:12px;margin-bottom:16px;box-shadow:var(--sh)">'+
-    '<div id="r-arts"></div><button class="btn-add" onclick="rAddArt()">+ Artigo</button></div>'+
-    '<div class="blocos">'+
+      ['Na sequência de uma reclamação d{{ART}} cliente {{NOME}}{{REFS}}, venho reportar a seguinte situação:', 'Na sequência de uma reclamação do/da cliente...'],
+      ['O técnico reportou-me a seguinte situação na obra d{{ART}} cliente {{NOME}}{{REFS}}:', 'O técnico reportou a seguinte situação...'],
+      ['Na sequência de uma visita à obra d{{ART}} cliente {{NOME}}{{REFS}}, identifiquei os seguintes problemas:', 'Na sequência de uma visita à obra...'],
+      ['{{NOME}}{{REFS}} manifestou insatisfação com a sua obra. Venho reportar a situação:', 'O/A cliente manifestou insatisfação...'],
+      ['{{NOME}}{{REFS}} entrou em contacto a solicitar actualização sobre a devolução do valor referente a [situação].', 'Devolução — cliente solicita actualização...'],
+      ['Está pendente a devolução a {{NOME}} de um valor associado a [excedente/devolução].', 'Devolução pendente ao cliente...'],
+      ['Existe um valor por regularizar com {{NOME}}, relativo a [descrição].', 'Valor por regularizar com o cliente...'],
+      ['A visita técnica prevista para [data] não foi realizada.', 'Visita técnica não realizada...'],
+      ['A entrega de material agendada para [data] não ocorreu conforme previsto.', 'Entrega de material não ocorreu...'],
+      ['Verificou-se um atraso na execução de [tarefa/serviço].', 'Atraso na execução...']
+    ],'(sem origem)','Outra origem...') +
+    '</div>' +
+    '<div class="sec-lbl">Descrição do problema</div>' +
+    '<div class="campo"><textarea class="textarea" id="r-desc" placeholder="Descreve o problema..." oninput="rRender()" rows="4"></textarea></div>' +
+    '<div class="sec-lbl">Artigos envolvidos</div>' +
+    '<div style="background:var(--paper);border:1.5px solid var(--paper-3);border-radius:var(--r);padding:12px;margin-bottom:16px;box-shadow:var(--sh)">' +
+    '<div id="r-arts"></div><button class="btn-add" onclick="rAddArt()">+ Artigo</button></div>' +
+    '<div class="blocos">' +
     mkBloco('rb-3','3','O que precisas dos colegas','v',[
       ['Solicito a vossa indicação dos próximos passos e prazo para que possa informar o cliente.','Solicito indicação dos próximos passos e prazo.'],
       ['Solicito o vosso apoio para resolver a situação o mais rapidamente possível.','Solicito apoio para resolver a situação.'],
@@ -684,44 +725,44 @@ function pgReporte(){
       ['Peço actualização sobre o reagendamento desta situação.','Peço actualização sobre reagendamento.'],
       ['Necessito de nova previsão para realização deste serviço.','Necessito nova previsão para o serviço.'],
       ['Agradeço confirmação de nova data para garantir alinhamento com o cliente.','Agradeço confirmação de nova data.']
-    ],'(sem pedido)','Outro pedido...')+
+    ],'(sem pedido)','Outro pedido...') +
     mkBloco('rb-4','4','Despedida','v',[
-      ['Com os melhores cumprimentos,&#10;Hélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],
-      ['Obrigado pela atenção,&#10;Hélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],
-      ['Obrigado pela colaboração,&#10;Hélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração']
-    ],'(sem despedida)','Outra despedida...')+
-    '</div></div>'+
-    '<div class="cstr-dir">'+
-    '<div class="prev-lbl">Pré-visualização</div>'+
-    '<div class="prev-box" id="r-prev"><span class="ph">Preenche os dados e selecciona os blocos.</span></div>'+
-    '<button class="btn-p v" onclick="rCopiarAssunto()">Copiar assunto</button>'+
-    '<button class="btn-p v" onclick="rCopiar()">Copiar mensagem</button>'+
-    '<button class="btn-p am" onclick="rGuardar()">📝 Guardar rascunho</button>'+
-    '<button class="btn-s" onclick="rReset()">↺ Recomeçar</button>'+
+      ['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],
+      ['Obrigado pela atenção,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],
+      ['Obrigado pela colaboração,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração'],
+      ['Um abraço,\nHélder','Um abraço, Hélder']
+    ],'(sem despedida)','Outra despedida...') +
+    '</div></div>' +
+    '<div class="cstr-dir">' +
+    '<div class="prev-lbl">Pré-visualização</div>' +
+    '<div class="prev-box" id="r-prev"><span class="ph">Preenche os dados e selecciona os blocos.</span></div>' +
+    '<button class="btn-p v" onclick="rCopiarAssunto()">Copiar assunto</button>' +
+    '<button class="btn-p v" onclick="rCopiar()">Copiar mensagem</button>' +
+    '<button class="btn-p am" onclick="rGuardar()">📝 Guardar rascunho</button>' +
+    '<button class="btn-s" onclick="rReset()">↺ Recomeçar</button>' +
     '</div></div>';
 }
 
 function rInit(){
   _rAid=0; _rAssunto='';
-  memLoad('reporte',['r-nome','r-trat','r-pc','r-os','r-desc']);
+  memLoad('reporte', R_MEM);
   rRenderDests();
   rAddArt();
   document.removeEventListener('ctcActualizado', rRenderDests);
   document.addEventListener('ctcActualizado', rRenderDests);
+  setTimeout(rRender, 0);
 }
 
 function rRefCard(tipo){
-  var val=document.getElementById('r-'+tipo)?.value.trim();
-  document.getElementById('rc-'+tipo)?.classList.toggle('tem',!!val);
+  var val=document.getElementById('r-'+tipo) ? document.getElementById('r-'+tipo).value.trim() : '';
+  var rc=document.getElementById('rc-'+tipo); if(rc) rc.classList.toggle('tem',!!val);
 }
 
 function rGetRefs(){
-  var pc=document.getElementById('r-pc')?.value.trim()||'';
-  var os=document.getElementById('r-os')?.value.trim()||'';
-  var p=[];
-  if(pc) p.push('PC '+pc);
-  if(os) p.push('OS '+os);
-  return {str: p.length?' ('+p.join(' · ')+')':'', arr:p};
+  var pc=document.getElementById('r-pc') ? document.getElementById('r-pc').value.trim() : '';
+  var os=document.getElementById('r-os') ? document.getElementById('r-os').value.trim() : '';
+  var p=[]; if(pc) p.push('PC '+pc); if(os) p.push('OS '+os);
+  return {str: p.length ? ' ('+p.join(' · ')+')' : '', arr:p};
 }
 
 function rAddArt(){
@@ -729,8 +770,8 @@ function rAddArt(){
   var lista=document.getElementById('r-arts'); if(!lista) return;
   var d=document.createElement('div');
   d.className='art-linha'; d.id='art-'+id;
-  d.innerHTML='<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Descrição do artigo" oninput="rRender()">'+
-    '<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Referência" oninput="rRender()">'+
+  d.innerHTML='<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Descrição do artigo" oninput="rRender()">' +
+    '<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Referência" oninput="rRender()">' +
     '<button class="btn-del" onclick="document.getElementById(\'art-'+id+'\').remove();rRender()">×</button>';
   lista.appendChild(d);
 }
@@ -738,22 +779,19 @@ function rAddArt(){
 function rRenderDests(){
   var ctcs=getCtcs();
   var el=document.getElementById('r-dest-lista'); if(!el) return;
-  if(!ctcs.length){
-    el.innerHTML='<p style="font-size:12px;color:var(--ink-4);font-style:italic">Sem contactos. Clica em "Gerir contactos".</p>';
-    return;
-  }
+  if(!ctcs.length){ el.innerHTML='<p style="font-size:12px;color:var(--ink-4);font-style:italic">Sem contactos. Clica em "Gerir contactos".</p>'; return; }
   el.innerHTML=ctcs.map(function(c){
-    return '<div class="dest-item" id="di-'+c.id+'">'+
-      '<div class="dest-check" id="dc-'+c.id+'"></div>'+
-      '<div class="dest-info"><div class="dest-nome">'+c.nome+'</div><div class="dest-email">'+c.email+'</div></div>'+
-      '<div class="dest-btns">'+
-      '<button class="dest-btn" id="dp-'+c.id+'" onclick="rSelDest('+c.id+',\'para\')">Para</button>'+
-      '<button class="dest-btn" id="dcc-'+c.id+'" onclick="rSelDest('+c.id+',\'cc\')">CC</button>'+
+    return '<div class="dest-item" id="di-'+c.id+'">' +
+      '<div class="dest-check" id="dc-'+c.id+'"></div>' +
+      '<div class="dest-info"><div class="dest-nome">'+c.nome+'</div><div class="dest-email">'+c.email+'</div></div>' +
+      '<div class="dest-btns">' +
+      '<button class="dest-btn" id="dp-'+c.id+'" onclick="rSelDest('+c.id+',\'para\')">Para</button>' +
+      '<button class="dest-btn" id="dcc-'+c.id+'" onclick="rSelDest('+c.id+',\'cc\')">CC</button>' +
       '</div></div>';
   }).join('');
 }
 
-function rSelDest(id, tipo){
+function rSelDest(id,tipo){
   var item=document.getElementById('di-'+id);
   var check=document.getElementById('dc-'+id);
   var bp=document.getElementById('dp-'+id);
@@ -767,7 +805,7 @@ function rSelDest(id, tipo){
   if(!jaEste){
     item.classList.add(tipo==='para'?'sp':'sc');
     if(check) check.textContent='✓';
-    if(tipo==='para'&&bp) bp.classList.add('ap');
+    if(tipo==='para' && bp) bp.classList.add('ap');
     else if(bc) bc.classList.add('ac');
   }
 }
@@ -775,28 +813,25 @@ function rSelDest(id, tipo){
 function rCopiarDest(tipo){
   var ctcs=getCtcs();
   var cls=tipo==='para'?'sp':'sc';
-  var emails=ctcs.filter(function(c){ return document.getElementById('di-'+c.id)?.classList.contains(cls); }).map(function(c){ return c.email; });
+  var emails=ctcs.filter(function(c){ return document.getElementById('di-'+c.id) && document.getElementById('di-'+c.id).classList.contains(cls); }).map(function(c){ return c.email; });
   if(!emails.length){ toast('Nenhum seleccionado'); return; }
   navigator.clipboard.writeText(emails.join('; ')).then(function(){ toast('Emails copiados!'); });
 }
 
 function rRender(){
-  memSave('reporte',['r-nome','r-trat','r-pc','r-os','r-desc']);
-  var nome=document.getElementById('r-nome')?.value.trim()||'';
-  var trat=document.getElementById('r-trat')?.value||'Sr.';
-  var desc=document.getElementById('r-desc')?.value.trim()||'';
+  var nome=document.getElementById('r-nome') ? document.getElementById('r-nome').value.trim() : '';
+  var trat=document.getElementById('r-trat') ? document.getElementById('r-trat').value : 'Sr.';
+  var desc=document.getElementById('r-desc') ? document.getElementById('r-desc').value.trim() : '';
   var refs=rGetRefs();
-  var nomeCompleto = trat==='sem' ? (nome||'[nome]') :
-                     trat==='neutro' ? (nome||'[nome]') :
-                     (trat+' '+(nome||'[nome]')).trim();
-  var art  = trat==='Dª' ? 'a' : 'o';
-  var dart = trat==='Dª' ? 'da' : 'do';
-  var d={NOME:nomeCompleto,REFS:refs.str,ART:art,DART:dart,TRAT:trat==='sem'||trat==='neutro'?'':trat};
+  var nc  =nomeCompleto(nome,trat);
+  var art =trat==='Da'?'a':'o';
+  var dart=trat==='Da'?'da':'do';
+  var d={NOME:nc, REFS:refs.str, ART:art, DART:dart};
   var b1=getBVal('rb-1'),b2=getBVal('rb-2'),b3=getBVal('rb-3'),b4=getBVal('rb-4');
   var arts=[];
   document.querySelectorAll('.art-linha').forEach(function(l){
-    var d2=l.querySelectorAll('input')[0]?.value.trim();
-    var r=l.querySelectorAll('input')[1]?.value.trim();
+    var d2=l.querySelectorAll('input')[0] ? l.querySelectorAll('input')[0].value.trim() : '';
+    var r =l.querySelectorAll('input')[1] ? l.querySelectorAll('input')[1].value.trim() : '';
     if(d2||r) arts.push({desc:d2||'[descrição]',ref:r||'[ref]'});
   });
   var prev=document.getElementById('r-prev'); if(!prev) return;
@@ -808,138 +843,119 @@ function rRender(){
   if(b2) pp.push(fillD(b2,d));
   if(desc) pp.push(desc);
   if(arts.length) pp.push('Artigos envolvidos:\n'+arts.map(function(a){ return '— '+a.desc+' · Ref: '+a.ref; }).join('\n'));
-  if(b3) pp.push(b3);
+  if(b3) pp.push(fillD(b3,d));
   if(b4) pp.push(fillD(b4,d));
-  var aHTML='<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--paper-3)">'+
-    '<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-4);margin-bottom:3px">Assunto</div>'+
+  var aHTML='<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--paper-3)">' +
+    '<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-4);margin-bottom:3px">Assunto</div>' +
     '<div style="font-size:13px;font-weight:500;color:var(--ink)">'+_rAssunto+'</div></div>';
   prev.innerHTML=aHTML+'<span style="white-space:pre-wrap">'+pp.filter(Boolean).join('\n\n')+'</span>';
+  memSave('reporte', R_MEM);
 }
 
-function rCopiarAssunto(){
-  if(!_rAssunto) return;
-  navigator.clipboard.writeText(_rAssunto).then(function(){ toast('Assunto copiado!'); });
-}
+function rCopiarAssunto(){ if(!_rAssunto) return; navigator.clipboard.writeText(_rAssunto).then(function(){ toast('Assunto copiado!'); }); }
 
 function rCopiar(){
-  var nome=document.getElementById('r-nome')?.value.trim()||'';
-  var trat=document.getElementById('r-trat')?.value||'Sr.';
-  var desc=document.getElementById('r-desc')?.value.trim()||'';
-  var refs=rGetRefs();
-  var nomeCompleto = trat==='sem'||trat==='neutro' ? (nome||'[nome]') : (trat+' '+(nome||'[nome]')).trim();
-  var art=trat==='Dª'?'a':'o'; var dart=trat==='Dª'?'da':'do';
-  var d={NOME:nomeCompleto,REFS:refs.str,ART:art,DART:dart,TRAT:trat==='sem'||trat==='neutro'?'':trat};
-  var b1=getBVal('rb-1'),b2=getBVal('rb-2'),b3=getBVal('rb-3'),b4=getBVal('rb-4');
-  var arts=[];
-  document.querySelectorAll('.art-linha').forEach(function(l){
-    var d2=l.querySelectorAll('input')[0]?.value.trim();
-    var r=l.querySelectorAll('input')[1]?.value.trim();
-    if(d2||r) arts.push({desc:d2||'[descrição]',ref:r||'[ref]'});
-  });
-  var pp=[];
-  if(b1) pp.push(fillD(b1,d));
-  if(b2) pp.push(fillD(b2,d));
-  if(desc) pp.push(desc);
-  if(arts.length) pp.push('Artigos envolvidos:\n'+arts.map(function(a){ return '— '+a.desc+' · Ref: '+a.ref; }).join('\n'));
-  if(b3) pp.push(b3);
-  if(b4) pp.push(fillD(b4,d));
-  if(!pp.length){ toast('Nada para copiar'); return; }
-  navigator.clipboard.writeText(pp.join('\n\n')).then(function(){ toast('✓ Mensagem copiada!'); });
+  var txt='';
+  var prev=document.getElementById('r-prev');
+  if(prev){ var span=prev.querySelector('span[style]'); txt=span?span.innerText:prev.innerText; }
+  if(!txt){ toast('Nada para copiar'); return; }
+  navigator.clipboard.writeText(_rAssunto+'\n\n'+txt).then(function(){ toast('✓ Mensagem copiada!'); });
 }
 
 function rGuardar(){
-  var txt=document.getElementById('r-prev')?.innerText;
-  if(!txt||txt.includes('Preenche')){ toast('Nada para guardar'); return; }
-  var nome=document.getElementById('r-nome')?.value.trim()||'';
-  guardarRascunho('Reporte'+(nome?' — '+nome:''), txt, 'reporte');
+  var prev=document.getElementById('r-prev');
+  if(!prev){ toast('Nada para guardar'); return; }
+  guardarRascunho('Reporte'+(document.getElementById('r-nome')?(' — '+document.getElementById('r-nome').value.trim()):''), prev.innerText, 'reporte');
 }
 
 function rReset(){
   ['r-nome','r-pc','r-os','r-desc'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
   var rt=document.getElementById('r-trat'); if(rt) rt.value='Sr.';
-  memClear('reporte');
-  ['rc-pc','rc-os'].forEach(function(id){ document.getElementById(id)?.classList.remove('tem'); });
+  ['rc-pc','rc-os'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('tem'); });
   var arts=document.getElementById('r-arts'); if(arts) arts.innerHTML='';
   _rAid=0; _rAssunto='';
   resetBlocos(['rb-1','rb-2','rb-3','rb-4']);
   rAddArt(); rRenderDests();
   var prev=document.getElementById('r-prev');
   if(prev) prev.innerHTML='<span class="ph">Preenche os dados e selecciona os blocos.</span>';
+  memClear('reporte');
 }
 
-// ── PROCESSUAIS ───────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// MENSAGENS PROCESSUAIS
+// ═══════════════════════════════════════════════════════
+
 var _prDest='int';
+var PR_MEM=['i-pc','i-os','i-corpo','i-extra','c-nome','c-trat','c-corpo','c-extra'];
 
 function pgProcessuais(){
-  return '<div class="page-eyebrow">Módulo</div>'+
-    '<div class="page-title">💬 Mensagens <em>Processuais</em></div>'+
-    '<div class="page-sub">Respostas internas e para clientes com biblioteca de frases integrada.</div>'+
-    '<div class="tabs-int">'+
-    '<div class="tab-int aa" id="tab-pint" onclick="prMudar(\'int\')">👥 Mensagem Interna</div>'+
-    '<div class="tab-int" id="tab-pcli" onclick="prMudar(\'cli\')">🙋 Mensagem para Cliente</div></div>'+
-    '<div class="cstr"><div class="cstr-esq">'+
-    // Painel Interno
-    '<div id="pr-int">'+
-    '<div class="sec-lbl">Referência</div>'+
-    '<div class="refs-grid">'+
-    '<div class="ref-card" id="irc-pc"><div class="ref-badge">PC · Projecto</div><div class="ref-desc">Identifica artigos e materiais</div><input class="ref-inp" id="i-pc" placeholder="Ex: 200153" oninput="prRefCard(\'pc\');prRender()"></div>'+
-    '<div class="ref-card" id="irc-os"><div class="ref-badge">OS · Ordem de Serviço</div><div class="ref-desc">Identifica prestação de serviço técnico</div><input class="ref-inp" id="i-os" placeholder="Ex: 562232" oninput="prRefCard(\'os\');prRender()"></div>'+
-    '</div>'+
-    '<div class="sec-lbl" style="margin-top:4px">Constrói a mensagem</div>'+
-    '<div class="blocos">'+
-    mkBloco('bi-1','1','Saudação','a',[['Bom dia,','Bom dia,'],['Boa tarde,','Boa tarde,'],['Colegas,','Colegas,'],['Exmos. Senhores,','Exmos. Senhores,']],'(sem saudação)','Outra saudação...')+
-    mkBloco('bi-2','2','Desculpas (opcional)','a',[['Peço desculpa pela demora em dar feedback.','Peço desculpa pela demora em dar feedback.'],['Peço desculpa pela demora em responder.','Peço desculpa pela demora em responder.'],['Lamento o atraso na comunicação.','Lamento o atraso na comunicação.'],['Peço desculpa por só agora dar resposta.','Peço desculpa por só agora dar resposta.']],'(sem desculpas)','Outra desculpa...')+
-    mkBloco('bi-3','3','Referência ao assunto','a',[['Na sequência do vosso pedido,','Na sequência do vosso pedido,'],['Em resposta à vossa questão,','Em resposta à vossa questão,'],['Relativamente ao {{REF}},','Relativamente ao PC/OS,'],['Conforme ficou definido,','Conforme ficou definido,'],['Na sequência da nossa conversa,','Na sequência da nossa conversa,'],['Para vosso conhecimento,','Para vosso conhecimento,'],['A título informativo,','A título informativo,']],'(sem referência)','Outra referência...')+
-    '</div>'+
-    '<div class="sec-lbl">Corpo da mensagem</div>'+
-    '<div class="campo"><textarea class="textarea" id="i-corpo" placeholder="Escreve aqui o essencial..." oninput="prRender()" rows="4"></textarea></div>'+
-    '<div class="campo"><textarea class="textarea" id="i-extra" placeholder="Parágrafo adicional (opcional)..." oninput="prRender()" rows="2"></textarea></div>'+
-    '<div class="blocos">'+
-    mkBloco('bi-4','4','Estado do processo','a',[['Confirmo que o processo foi aceite e registado.','Confirmo que foi aceite e registado.'],['Confirmo que o processo foi registado com {{REF}}.','Confirmo que foi registado com PC/OS.'],['Já dei andamento a esta situação.','Já dei andamento a esta situação.'],['A situação está a ser tratada com prioridade.','A situação está a ser tratada com prioridade.'],['O processo está pendente de aprovação interna.','Pendente de aprovação interna.'],['O processo foi encerrado com sucesso.','Processo encerrado com sucesso.']],'(sem estado)','Outro estado...')+
-    mkBloco('bi-5','5','Próximo passo / Prazo','a',[['Assim que tiver novidades informo de imediato.','Informo assim que tiver novidades.'],['Aguardo a vossa resposta com brevidade.','Aguardo resposta com brevidade.'],['Dou feedback logo que possível.','Dou feedback logo que possível.'],['Ficamos a aguardar a vossa confirmação.','Aguardamos a vossa confirmação.'],['Solicito resposta até ao final do dia.','Solicito resposta até final do dia.']],'(sem prazo)','Outro prazo...')+
-    mkBloco('bi-6','6','Disponibilidade','a',[['Estou disponível para qualquer esclarecimento.','Disponível para qualquer esclarecimento.'],['Podem contar comigo para o que precisarem.','Podem contar comigo.'],['Qualquer dúvida é só dizer.','Qualquer dúvida é só dizer.'],['Estou a acompanhar a situação de perto.','Estou a acompanhar de perto.']],'(sem disponibilidade)','Outra disponibilidade...')+
-    mkBloco('bi-7','7','Despedida','a',[['Com os melhores cumprimentos,&#10;Hélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Obrigado pela atenção,&#10;Hélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],['Obrigado pela colaboração,&#10;Hélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração'],['Um abraço,&#10;Hélder','Um abraço, Hélder']],'(sem despedida)','Outra despedida...')+
-    '</div></div>'+
-    // Painel Cliente
-    '<div id="pr-cli" style="display:none">'+
-    '<div class="sec-lbl">Dados</div>'+
-    '<div class="grid-2" style="margin-bottom:14px">'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="c-nome" placeholder="Ex: Ana" oninput="prRender()"></div>'+
-    '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>'+
-    '<select class="inp" id="c-trat" onchange="prRender()">'+
-    '<option value="Sr.">Sr.</option>'+
-    '<option value="Dª">Dª</option>'+
-    '<option value="neutro">(neutro)</option>'+
-    '<option value="sem">(sem)</option>'+
-    '</select></div></div>'+
-    '<div class="sec-lbl">Constrói a mensagem</div>'+
-    '<div class="blocos">'+
-    mkBloco('bc-1','1','Saudação','v',[['Bom dia {{NOME}},','Bom dia [nome],'],['Boa tarde {{NOME}},','Boa tarde [nome],'],['Olá {{NOME}}!','Olá [nome]!'],['Exmo. Sr. {{NOME}},','Exmo. Sr. [nome],'],['Exma. Sra. {{NOME}},','Exma. Sra. [nome],']],'(sem saudação)','Outra saudação...')+
-    mkBloco('bc-2','2','Desculpas (opcional)','v',[['Peço desculpa pela demora em dar notícias.','Peço desculpa pela demora em dar notícias.'],['Lamento o transtorno causado por esta situação.','Lamento o transtorno causado.'],['Peço desculpa pela situação — não é o que pretendemos.','Peço desculpa — não é o que pretendemos.'],['Compreendo a sua insatisfação e asseguro que estamos a resolver.','Compreendo a sua insatisfação.'],['Lamento que a situação não tenha correspondido às suas expectativas.','Lamento que não correspondeu às expectativas.']],'(sem desculpas)','Outra desculpa...')+
-    mkBloco('bc-3','3','Referência ao assunto','v',[['Na sequência do nosso contacto,','Na sequência do nosso contacto,'],['Em resposta à sua questão,','Em resposta à sua questão,'],['Relativamente ao seu projecto,','Relativamente ao seu projecto,'],['Conforme ficou acordado,','Conforme ficou acordado,'],['Na sequência da nossa conversa em loja,','Na sequência da nossa conversa em loja,'],['Quero dar-lhe uma actualização sobre a sua situação.','Quero dar-lhe uma actualização.'],['Conforme combinado,','Conforme combinado,']],'(sem referência)','Outra referência...')+
-    '</div>'+
-    '<div class="sec-lbl">Corpo da mensagem</div>'+
-    '<div class="campo"><textarea class="textarea" id="c-corpo" placeholder="Escreve aqui o essencial..." oninput="prRender()" rows="4"></textarea></div>'+
-    '<div class="campo"><textarea class="textarea" id="c-extra" placeholder="Parágrafo adicional (opcional)..." oninput="prRender()" rows="2"></textarea></div>'+
-    '<div class="blocos">'+
-    mkBloco('bc-4','4','Próximo passo / Prazo','v',[['Assim que tiver novidades entro em contacto de imediato.','Entro em contacto assim que tiver novidades.'],['Dou-lhe feedback logo que possível.','Dou-lhe feedback logo que possível.'],['Ficamos a aguardar a sua confirmação para avançar.','Aguardamos a sua confirmação.'],['Pode contar com uma resposta ainda hoje.','Pode contar com resposta ainda hoje.']],'(sem prazo)','Outro prazo...')+
-    mkBloco('bc-5','5','Disponibilidade','v',[['Estou disponível para qualquer dúvida ou esclarecimento.','Disponível para qualquer dúvida.'],['Pode contar comigo para o que precisar.','Pode contar comigo.'],['Qualquer dúvida ou ajuste, é só dizer.','Qualquer dúvida ou ajuste, é só dizer.'],['Se vir algum ponto a ajustar, diga-me.','Se vir algum ponto a ajustar, diga-me.']],'(sem disponibilidade)','Outra disponibilidade...')+
-    mkBloco('bc-6','6','Agradecimento (opcional)','v',[['Obrigado pela sua compreensão.','Obrigado pela sua compreensão.'],['Obrigado pela sua paciência.','Obrigado pela sua paciência.'],['Obrigado pela confiança depositada.','Obrigado pela confiança depositada.']],'(sem agradecimento)','Outro agradecimento...')+
-    mkBloco('bc-7','7','Despedida','v',[['Com os melhores cumprimentos,&#10;Hélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Um abraço,&#10;Hélder','Um abraço, Hélder'],['Até breve,&#10;Hélder','Até breve, Hélder'],['Com estima,&#10;Hélder Melo | VPR · Leroy Merlin','Com estima']],'(sem despedida)','Outra despedida...')+
-    '</div></div>'+
-    '</div>'+
-    '<div class="cstr-dir">'+
-    '<div class="prev-lbl">Pré-visualização</div>'+
-    '<div class="prev-box" id="pr-prev"><span class="ph">Selecciona os blocos para construir a mensagem.</span></div>'+
-    '<button class="btn-p a" id="pr-btn-cop" onclick="prCopiar()">Copiar mensagem</button>'+
-    '<button class="btn-p am" onclick="prGuardar()">📝 Guardar rascunho</button>'+
-    '<button class="btn-s" onclick="prReset()">↺ Recomeçar</button>'+
+  return '<div class="page-eyebrow">Módulo</div>' +
+    '<div class="page-title">💬 Mensagens <em>Processuais</em></div>' +
+    '<div class="page-sub">Respostas internas e para clientes com biblioteca de frases integrada.</div>' +
+    '<div class="tabs-int">' +
+    '<div class="tab-int aa" id="tab-pint" onclick="prMudar(\'int\')">👥 Mensagem Interna</div>' +
+    '<div class="tab-int" id="tab-pcli" onclick="prMudar(\'cli\')">🙋 Mensagem para Cliente</div></div>' +
+    '<div class="cstr"><div class="cstr-esq">' +
+    '<div id="pr-int">' +
+    '<div class="sec-lbl">Referência</div>' +
+    '<div class="refs-grid">' +
+    '<div class="ref-card" id="irc-pc"><div class="ref-badge">PC · Projecto</div><div class="ref-desc">Identifica artigos e materiais</div><input class="ref-inp" id="i-pc" placeholder="Ex: 200153" oninput="prRefCard(\'pc\');prRender()"></div>' +
+    '<div class="ref-card" id="irc-os"><div class="ref-badge">OS · Ordem de Serviço</div><div class="ref-desc">Identifica prestação de serviço técnico</div><input class="ref-inp" id="i-os" placeholder="Ex: 562232" oninput="prRefCard(\'os\');prRender()"></div>' +
+    '</div>' +
+    '<div class="sec-lbl" style="margin-top:4px">Constrói a mensagem</div>' +
+    '<div class="blocos">' +
+    mkBloco('bi-1','1','Saudação','a',[['Bom dia,','Bom dia,'],['Boa tarde,','Boa tarde,'],['Colegas,','Colegas,']],'(sem saudação)','Outra saudação...') +
+    mkBloco('bi-2','2','Desculpas (opcional)','a',[['Peço desculpa pela demora em dar feedback.','Peço desculpa pela demora em dar feedback.'],['Peço desculpa pela demora em responder.','Peço desculpa pela demora em responder.'],['Lamento o atraso na comunicação.','Lamento o atraso na comunicação.']],'(sem desculpas)','Outra desculpa...') +
+    mkBloco('bi-3','3','Referência ao assunto','a',[['Na sequência do vosso pedido,','Na sequência do vosso pedido,'],['Em resposta à vossa questão,','Em resposta à vossa questão,'],['Relativamente ao {{REF}},','Relativamente ao PC/OS,'],['Conforme ficou definido,','Conforme ficou definido,'],['Na sequência da nossa conversa,','Na sequência da nossa conversa,']],'(sem referência)','Outra referência...') +
+    '</div>' +
+    '<div class="sec-lbl">Corpo da mensagem</div>' +
+    '<div class="campo"><textarea class="textarea" id="i-corpo" placeholder="Escreve aqui o essencial..." oninput="prRender()" rows="4"></textarea></div>' +
+    '<div class="campo"><textarea class="textarea" id="i-extra" placeholder="Parágrafo adicional (opcional)..." oninput="prRender()" rows="2"></textarea></div>' +
+    '<div class="blocos">' +
+    mkBloco('bi-4','4','Estado do processo','a',[['Confirmo que o processo foi aceite e registado.','Confirmo que foi aceite e registado.'],['Já dei andamento a esta situação.','Já dei andamento a esta situação.'],['A situação está a ser tratada com prioridade.','A situação está a ser tratada com prioridade.']],'(sem estado)','Outro estado...') +
+    mkBloco('bi-5','5','Próximo passo / Prazo','a',[['Assim que tiver novidades informo de imediato.','Informo assim que tiver novidades.'],['Aguardo a vossa resposta com brevidade.','Aguardo resposta com brevidade.'],['Solicito resposta até ao final do dia.','Solicito resposta até final do dia.']],'(sem prazo)','Outro prazo...') +
+    mkBloco('bi-6','6','Disponibilidade','a',[['Estou disponível para qualquer esclarecimento.','Disponível para qualquer esclarecimento.'],['Qualquer dúvida é só dizer.','Qualquer dúvida é só dizer.']],'(sem disponibilidade)','Outra disponibilidade...') +
+    mkBloco('bi-7','7','Despedida','a',[['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Obrigado pela atenção,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],['Um abraço,\nHélder','Um abraço, Hélder']],'(sem despedida)','Outra despedida...') +
+    '</div></div>' +
+    '<div id="pr-cli" style="display:none">' +
+    '<div class="sec-lbl">Dados</div>' +
+    '<div class="grid-2" style="margin-bottom:14px">' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="c-nome" placeholder="Ex: Ana" oninput="prRender()"></div>' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>' +
+    '<select class="inp" id="c-trat" onchange="prRender()">' +
+    '<option value="Sr.">Sr.</option>' +
+    '<option value="Da">Dª</option>' +
+    '<option value="neutro">(neutro)</option>' +
+    '<option value="sem">(sem)</option>' +
+    '</select></div></div>' +
+    '<div class="sec-lbl">Constrói a mensagem</div>' +
+    '<div class="blocos">' +
+    mkBloco('bc-1','1','Saudação','v',[['Bom dia {{NOME}},','Bom dia Sr./Dª [nome],'],['Boa tarde {{NOME}},','Boa tarde Sr./Dª [nome],'],['Olá {{NOME}}!','Olá [nome]!']],'(sem saudação)','Outra saudação...') +
+    mkBloco('bc-2','2','Desculpas (opcional)','v',[['Peço desculpa pela demora em dar notícias.','Peço desculpa pela demora em dar notícias.'],['Lamento o transtorno causado por esta situação.','Lamento o transtorno causado.'],['Compreendo a sua insatisfação e asseguro que estamos a resolver.','Compreendo a sua insatisfação.']],'(sem desculpas)','Outra desculpa...') +
+    mkBloco('bc-3','3','Referência ao assunto','v',[['Na sequência do nosso contacto,','Na sequência do nosso contacto,'],['Em resposta à sua questão,','Em resposta à sua questão,'],['Relativamente ao seu projecto,','Relativamente ao seu projecto,'],['Conforme ficou acordado,','Conforme ficou acordado,']],'(sem referência)','Outra referência...') +
+    '</div>' +
+    '<div class="sec-lbl">Corpo da mensagem</div>' +
+    '<div class="campo"><textarea class="textarea" id="c-corpo" placeholder="Escreve aqui o essencial..." oninput="prRender()" rows="4"></textarea></div>' +
+    '<div class="campo"><textarea class="textarea" id="c-extra" placeholder="Parágrafo adicional (opcional)..." oninput="prRender()" rows="2"></textarea></div>' +
+    '<div class="blocos">' +
+    mkBloco('bc-4','4','Próximo passo / Prazo','v',[['Assim que tiver novidades entro em contacto de imediato.','Entro em contacto assim que tiver novidades.'],['Dou-lhe feedback logo que possível.','Dou-lhe feedback logo que possível.'],['Ficamos a aguardar a sua confirmação para avançar.','Aguardamos a sua confirmação.']],'(sem prazo)','Outro prazo...') +
+    mkBloco('bc-5','5','Disponibilidade','v',[['Estou disponível para qualquer dúvida ou esclarecimento.','Disponível para qualquer dúvida.'],['Qualquer dúvida ou ajuste, é só dizer.','Qualquer dúvida ou ajuste, é só dizer.']],'(sem disponibilidade)','Outra disponibilidade...') +
+    mkBloco('bc-6','6','Agradecimento (opcional)','v',[['Obrigado pela sua compreensão.','Obrigado pela sua compreensão.'],['Obrigado pela sua paciência.','Obrigado pela sua paciência.'],['Obrigado pela confiança depositada.','Obrigado pela confiança depositada.']],'(sem agradecimento)','Outro agradecimento...') +
+    mkBloco('bc-7','7','Despedida','v',[['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Até breve,\nHélder Melo | VPR · Leroy Merlin','Até breve'],['Um abraço,\nHélder','Um abraço, Hélder']],'(sem despedida)','Outra despedida...') +
+    '</div></div>' +
+    '</div>' +
+    '<div class="cstr-dir">' +
+    '<div class="prev-lbl">Pré-visualização</div>' +
+    '<div class="prev-box" id="pr-prev"><span class="ph">Selecciona os blocos para construir a mensagem.</span></div>' +
+    '<button class="btn-p a" id="pr-btn-cop" onclick="prCopiar()">Copiar mensagem</button>' +
+    '<button class="btn-p am" onclick="prGuardar()">📝 Guardar rascunho</button>' +
+    '<button class="btn-s" onclick="prReset()">↺ Recomeçar</button>' +
     '</div></div>';
 }
 
 function prInit(){
   _prDest='int';
-  memLoad('processuais',['i-pc','i-os','i-corpo','i-extra','c-nome','c-trat','c-corpo','c-extra']);
+  memLoad('processuais', PR_MEM);
   setTimeout(prRender,0);
 }
 
@@ -957,19 +973,18 @@ function prMudar(d){
 }
 
 function prRefCard(tipo){
-  var val=document.getElementById('i-'+tipo)?.value.trim();
-  document.getElementById('irc-'+tipo)?.classList.toggle('tem',!!val);
+  var val=document.getElementById('i-'+tipo) ? document.getElementById('i-'+tipo).value.trim() : '';
+  var rc=document.getElementById('irc-'+tipo); if(rc) rc.classList.toggle('tem',!!val);
 }
 
 function prRender(){
-  memSave('processuais',['i-pc','i-os','i-corpo','i-extra','c-nome','c-trat','c-corpo','c-extra']);
   var prev=document.getElementById('pr-prev'); if(!prev) return;
   var pp=[];
   if(_prDest==='int'){
-    var pc=document.getElementById('i-pc')?.value.trim()||'';
-    var os=document.getElementById('i-os')?.value.trim()||'';
-    var corpo=document.getElementById('i-corpo')?.value.trim()||'';
-    var extra=document.getElementById('i-extra')?.value.trim()||'';
+    var pc=document.getElementById('i-pc') ? document.getElementById('i-pc').value.trim() : '';
+    var os=document.getElementById('i-os') ? document.getElementById('i-os').value.trim() : '';
+    var corpo=document.getElementById('i-corpo') ? document.getElementById('i-corpo').value.trim() : '';
+    var extra=document.getElementById('i-extra') ? document.getElementById('i-extra').value.trim() : '';
     var rp=[]; if(pc) rp.push('PC '+pc); if(os) rp.push('OS '+os);
     var refs=rp.join(' · ');
     var d={REF:refs||'[PC/OS]'};
@@ -978,7 +993,7 @@ function prRender(){
     if(!temAlgo){ prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>'; return; }
     if(b1) pp.push(b1);
     if(b2) pp.push(b2);
-    if(b3){ pp.push(fillD(b3,d)); if(refs&&b3.indexOf('{{REF}}')===-1) pp.push(refs); }
+    if(b3){ pp.push(fillD(b3,d)); if(refs && b3.indexOf('{{REF}}')===-1) pp.push(refs); }
     else if(refs) pp.push(refs);
     if(corpo) pp.push(corpo);
     if(extra) pp.push(extra);
@@ -987,16 +1002,13 @@ function prRender(){
     if(b6) pp.push(b6);
     if(b7) pp.push(b7);
   } else {
-    var nome=document.getElementById('c-nome')?.value.trim()||'';
-    var trat=document.getElementById('c-trat')?.value||'Sr.';
-    var corpo2=document.getElementById('c-corpo')?.value.trim()||'';
-    var extra2=document.getElementById('c-extra')?.value.trim()||'';
-    var nomeCompleto = trat==='sem' ? (nome||'[nome]') :
-                       trat==='neutro' ? (nome||'[nome]') :
-                       (trat+' '+(nome||'[nome]')).trim();
-    var art  = trat==='Dª' ? 'a' : 'o';
-    var dart = trat==='Dª' ? 'da' : 'do';
-    var d2={NOME:nomeCompleto,ART:art,DART:dart,TRAT:trat==='sem'||trat==='neutro'?'':trat};
+    var nome=document.getElementById('c-nome') ? document.getElementById('c-nome').value.trim() : '';
+    var trat=document.getElementById('c-trat') ? document.getElementById('c-trat').value : 'Sr.';
+    var corpo2=document.getElementById('c-corpo') ? document.getElementById('c-corpo').value.trim() : '';
+    var extra2=document.getElementById('c-extra') ? document.getElementById('c-extra').value.trim() : '';
+    var nc=nomeCompleto(nome,trat);
+    var art=trat==='Da'?'a':'o';
+    var d2={NOME:nc, ART:art};
     var c1=getBVal('bc-1'),c2=getBVal('bc-2'),c3=getBVal('bc-3'),c4=getBVal('bc-4'),c5=getBVal('bc-5'),c6=getBVal('bc-6'),c7=getBVal('bc-7');
     var temAlgo2=[c1,c2,c3,c4,c5,c6,c7].some(function(v){ return v!==undefined; })||corpo2;
     if(!temAlgo2){ prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>'; return; }
@@ -1011,16 +1023,17 @@ function prRender(){
     if(c7) pp.push(c7);
   }
   prev.innerText=pp.filter(Boolean).join('\n\n');
+  memSave('processuais', PR_MEM);
 }
 
 function prCopiar(){
-  var txt=document.getElementById('pr-prev')?.innerText;
+  var txt=document.getElementById('pr-prev') ? document.getElementById('pr-prev').innerText : '';
   if(!txt||txt.includes('Selecciona')){ toast('Nada para copiar'); return; }
   navigator.clipboard.writeText(txt).then(function(){ toast('✓ Mensagem copiada!'); });
 }
 
 function prGuardar(){
-  var txt=document.getElementById('pr-prev')?.innerText;
+  var txt=document.getElementById('pr-prev') ? document.getElementById('pr-prev').innerText : '';
   if(!txt||txt.includes('Selecciona')){ toast('Nada para guardar'); return; }
   guardarRascunho('Mensagem processual', txt, 'processuais');
 }
@@ -1028,14 +1041,17 @@ function prGuardar(){
 function prReset(){
   ['i-pc','i-os','i-corpo','i-extra','c-nome','c-corpo','c-extra'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
   var ct=document.getElementById('c-trat'); if(ct) ct.value='Sr.';
-  memClear('processuais');
-  ['irc-pc','irc-os'].forEach(function(id){ document.getElementById(id)?.classList.remove('tem'); });
+  ['irc-pc','irc-os'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('tem'); });
   resetBlocos(['bi-1','bi-2','bi-3','bi-4','bi-5','bi-6','bi-7','bc-1','bc-2','bc-3','bc-4','bc-5','bc-6','bc-7']);
   var prev=document.getElementById('pr-prev');
   if(prev) prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>';
+  memClear('processuais');
 }
 
-// ── RESPOSTAS RÁPIDAS ─────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// RESPOSTAS RÁPIDAS
+// ═══════════════════════════════════════════════════════
+
 var RESPOSTAS=[
   {id:'folga',ico:'🌴',titulo:'Ausência e folga',msgs:[
     'Estou de folga hoje. Amanhã entro em contacto.',
@@ -1077,7 +1093,6 @@ var RESPOSTAS=[
     'Fico disponível a partir de amanhã — quando lhe der jeito.',
     'Pode ser na segunda de manhã?',
     'Combino consigo assim que tiver a agenda confirmada.',
-    'Vamos combinar — quando tem disponibilidade?',
     'Posso ligar-lhe amanhã de manhã?',
     'Ficamos assim — qualquer alteração aviso com antecedência.'
   ]},
@@ -1110,33 +1125,30 @@ var RESPOSTAS=[
     'Com prazer, sempre que precisar.',
     'Esteja bem!',
     'Obrigado pela confiança.',
-    'Boa sorte com o projecto!',
-    'Fico contente que tenha corrido bem.',
     'Qualquer coisa que precise, já sabe onde estou.',
     'Um abraço e até à próxima!'
   ]}
 ];
 
 function pgRespostas(){
-  var html='<div class="page-eyebrow">Módulo</div>'+
-    '<div class="page-title">💭 Respostas <em>Rápidas</em></div>'+
-    '<div class="page-sub">Mensagens curtas para o dia a dia. Abre a categoria e clica para copiar.</div>'+
+  var html='<div class="page-eyebrow">Módulo</div>' +
+    '<div class="page-title">💭 Respostas <em>Rápidas</em></div>' +
+    '<div class="page-sub">Mensagens curtas para o dia a dia. Abre a categoria e clica para copiar.</div>' +
     '<div class="blocos">';
   RESPOSTAS.forEach(function(cat){
-    html+='<div class="bloco" id="rr-'+cat.id+'">'+
-      '<div class="bloco-hdr" onclick="rrToggle(this)">'+
-      '<span style="font-size:18px;width:22px;text-align:center;flex-shrink:0">'+cat.ico+'</span>'+
-      '<span class="btit">'+cat.titulo+'</span>'+
-      '<span style="font-family:var(--mono);font-size:10px;color:var(--ink-4)">'+cat.msgs.length+' mensagens</span>'+
-      '<span class="chev">▼</span></div>'+
-      '<div class="opcoes" id="rro-'+cat.id+'" style="flex-direction:column;gap:6px">'+
+    html += '<div class="bloco" id="rr-'+cat.id+'">' +
+      '<div class="bloco-hdr" onclick="rrToggle(\''+cat.id+'\')">' +
+      '<span style="font-size:18px;width:22px;text-align:center;flex-shrink:0">'+cat.ico+'</span>' +
+      '<span class="btit">'+cat.titulo+'</span>' +
+      '<span style="font-family:var(--mono);font-size:10px;color:var(--ink-4)">'+cat.msgs.length+' mensagens</span>' +
+      '<span class="chev">▼</span></div>' +
+      '<div class="opcoes" id="rro-'+cat.id+'" style="flex-direction:column;gap:6px">' +
       cat.msgs.map(function(msg){
-        return '<div class="rr-msg" data-msg="'+msg.replace(/"/g,'&quot;')+'" style="background:var(--paper-2);border:1px solid var(--paper-3);border-radius:8px;'+
-          'padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:all .15s">'+
-          '<span style="font-size:13px;color:var(--ink-2);line-height:1.6">'+msg+'</span>'+
-          '<span style="font-size:11px;color:var(--ink-4);flex-shrink:0;font-family:var(--mono);white-space:nowrap">copiar</span>'+
+        return '<div class="rr-msg" data-msg="'+msg.replace(/"/g,'&quot;')+'" style="background:var(--paper-2);border:1px solid var(--paper-3);border-radius:8px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:all .15s">' +
+          '<span style="font-size:13px;color:var(--ink-2);line-height:1.6">'+msg+'</span>' +
+          '<span style="font-size:11px;color:var(--ink-4);flex-shrink:0;font-family:var(--mono);white-space:nowrap">copiar</span>' +
           '</div>';
-      }).join('')+
+      }).join('') +
       '</div></div>';
   });
   html+='</div>';
@@ -1150,8 +1162,8 @@ function rrInit(){
   });
 }
 
-function rrToggle(hdr){
-  var bloco=hdr.parentElement;
+function rrToggle(id){
+  var bloco=document.getElementById('rr-'+id);
   if(bloco) bloco.classList.toggle('aberto');
 }
 
@@ -1167,62 +1179,64 @@ function rrCopiar(el){
     setTimeout(function(){
       span.textContent=orig; span.style.color='';
       el.style.borderColor=''; el.style.background='';
-    }, 2000);
+    },2000);
   });
 }
 
+// ═══════════════════════════════════════════════════════
+// BIBLIOTECA DE FRASES
+// ═══════════════════════════════════════════════════════
 
-// ── BIBLIOTECA ────────────────────────────────────────
 var _bibCat=null, _bibQ='';
 
 var BIBLIOTECA=[
   {id:'abertura',ico:'✉️',titulo:'Abertura e contexto',sub:'Para iniciar qualquer mensagem com o contexto certo',secs:[
-    {titulo:'Frases curtas',frases:['Na sequência do nosso contacto,','Em resposta à sua questão,','Relativamente ao assunto em apreço,','Conforme ficou acordado,','Na sequência da nossa conversa,','Para vosso conhecimento,','A título informativo,','Em complemento à informação anterior,','Em acompanhamento ao nosso último contacto,','Na sequência da reunião de hoje,','Conforme o que ficou definido em loja,','Como acordado anteriormente,','Na continuação do nosso diálogo,','Retomando o assunto tratado,','Em resposta ao vosso pedido,','Dando seguimento ao contacto anterior,','Na sequência da vossa solicitação,']},
+    {titulo:'Frases curtas',frases:['Na sequência do nosso contacto,','Em resposta à sua questão,','Relativamente ao assunto em apreço,','Conforme ficou acordado,','Na sequência da nossa conversa,','Para vosso conhecimento,','A título informativo,','Em complemento à informação anterior,','Retomando o assunto tratado,','Em resposta ao vosso pedido,','Dando seguimento ao contacto anterior,','Na sequência da vossa solicitação,']},
     {titulo:'Parágrafos completos',frases:['Venho por este meio dar seguimento ao nosso último contacto, partilhando as informações mais recentes sobre o assunto.','Em resposta à sua mensagem, e após a devida análise da situação, venho prestar os seguintes esclarecimentos.','Na sequência da conversa que tivemos, venho formalizar por escrito o que ficou acordado entre nós.','Quero dar-lhe uma actualização sobre o estado do seu projecto, conforme me comprometi a fazer.']}
   ]},
   {id:'confirmacao',ico:'✅',titulo:'Confirmação e resposta',sub:'Confirmar, validar e responder a pedidos',secs:[
-    {titulo:'Frases curtas',frases:['Confirmo o recebimento da vossa mensagem.','Confirmo que o processo foi aceite e registado.','Confirmo que está tudo tratado.','Confirmo que a informação foi registada.','Tomei nota da vossa solicitação.','A informação foi recebida e registada.','Confirmo que o material foi encomendado.','Sim, está correcto.','Positivo — pode avançar.','Tudo conforme o previsto.','O processo está em curso.','Já está a ser tratado.','Já dei andamento a esta situação.','Confirmo que o processo foi registado com o PC indicado.','A encomenda foi efectuada com sucesso.']},
-    {titulo:'Parágrafos completos',frases:['Confirmo a recepção da vossa mensagem e informo que já procedi em conformidade com o solicitado. Em caso de necessidade, estou disponível para prestar esclarecimentos adicionais.','Em resposta ao vosso pedido, confirmo que a situação foi tratada e que podem contar com o nosso acompanhamento ao longo do processo.','Venho confirmar que o processo foi aceite internamente e que todos os passos necessários foram iniciados.','Confirmo que a encomenda foi registada e que aguarda processamento. Assim que houver uma data de entrega confirmada, entrarei em contacto.']}
+    {titulo:'Frases curtas',frases:['Confirmo o recebimento da vossa mensagem.','Confirmo que o processo foi aceite e registado.','Confirmo que está tudo tratado.','Tomei nota da vossa solicitação.','A informação foi recebida e registada.','Confirmo que o material foi encomendado.','Sim, está correcto.','Positivo — pode avançar.','O processo está em curso.','Já está a ser tratado.','Já dei andamento a esta situação.']},
+    {titulo:'Parágrafos completos',frases:['Confirmo a recepção da vossa mensagem e informo que já procedi em conformidade com o solicitado.','Em resposta ao vosso pedido, confirmo que a situação foi tratada e que podem contar com o nosso acompanhamento.','Venho confirmar que o processo foi aceite internamente e que todos os passos necessários foram iniciados.']}
   ]},
   {id:'acompanhamento',ico:'🔔',titulo:'Acompanhamento',sub:'Follow-up, dar novidades e retomar contacto',secs:[
-    {titulo:'Frases curtas',frases:['Queria saber se já teve oportunidade de analisar a proposta.','Venho retomar o assunto que ficou pendente.','Queria dar-lhe uma actualização sobre o estado do processo.','Assim que tiver novidades informo de imediato.','Dou feedback logo que possível.','Estou a acompanhar a situação de perto.','Vou verificar e respondo com brevidade.','Ficamos a aguardar a sua confirmação para avançar.','Aguardo a vossa resposta com brevidade.','Solicito que me informem assim que possível.','Estou a aguardar indicações para prosseguir.','Entro em contacto assim que houver novidades.','Dou-lhe feedback assim que tiver informação concreta.','Estou a tratar disto com prioridade.','Preciso do seu feedback para conseguirmos avançar.']},
-    {titulo:'Parágrafos completos',frases:['Queria retomar o contacto relativamente ao assunto que ficou pendente. Estou disponível para agendar uma conversa e alinharmos os próximos passos.','Venho dar-lhe uma actualização sobre o estado do processo. A situação está a evoluir positivamente e assim que tiver informação mais concreta entro em contacto.','Não queria deixar passar mais tempo sem dar notícias. Estamos a tratar da situação com a devida atenção e brevemente terei algo concreto para partilhar.','Queria saber se a proposta que enviei correspondeu às suas expectativas ou se há algum ponto que gostasse de rever.']}
+    {titulo:'Frases curtas',frases:['Queria saber se já teve oportunidade de analisar a proposta.','Venho retomar o assunto que ficou pendente.','Queria dar-lhe uma actualização sobre o estado do processo.','Assim que tiver novidades informo de imediato.','Dou feedback logo que possível.','Estou a acompanhar a situação de perto.','Ficamos a aguardar a sua confirmação para avançar.','Aguardo a vossa resposta com brevidade.','Preciso do seu feedback para conseguirmos avançar.']},
+    {titulo:'Parágrafos completos',frases:['Queria retomar o contacto relativamente ao assunto que ficou pendente. Estou disponível para agendar uma conversa e alinharmos os próximos passos.','Venho dar-lhe uma actualização sobre o estado do processo. A situação está a evoluir positivamente e assim que tiver informação mais concreta entro em contacto.','Queria saber se a proposta que enviei correspondeu às suas expectativas ou se há algum ponto que gostasse de rever.']}
   ]},
   {id:'desculpas',ico:'🙏',titulo:'Desculpas e atrasos',sub:'Pedir desculpa com dignidade, sem se diminuir',secs:[
-    {titulo:'Frases curtas',frases:['Peço desculpa pela demora em dar notícias.','Peço desculpa pela demora em responder.','Lamento o atraso na comunicação.','Peço desculpa por só agora dar resposta.','Lamento o transtorno causado.','Peço desculpa pela situação — não é o que pretendemos.','Compreendo a sua insatisfação.','Lamento que a situação não tenha correspondido às expectativas.','Reconheço que a situação podia ter sido gerida de outra forma.','Peço desculpa pelo silêncio — tem sido um período muito exigente.','Lamento o constrangimento causado.']},
-    {titulo:'Parágrafos completos',frases:['Peço desculpa pela demora em responder. Não é reflexo da importância que dou à sua situação — tem sido um período de grande exigência e não queria responder sem ter informação concreta para partilhar.','Lamento o transtorno que esta situação lhe causou. Asseguro-lhe que estamos a tratar de tudo com a maior prioridade e que não o deixaremos sem resposta.','Compreendo a sua insatisfação e reconheço que a situação não correu como deveria. O que posso garantir é que estamos completamente focados em resolver isto da melhor forma possível.','Peço desculpa pelo atraso na comunicação. A situação revelou-se mais complexa do que o esperado e quis aguardar por informação concreta antes de entrar em contacto.']}
+    {titulo:'Frases curtas',frases:['Peço desculpa pela demora em dar notícias.','Peço desculpa pela demora em responder.','Lamento o atraso na comunicação.','Lamento o transtorno causado.','Compreendo a sua insatisfação.','Lamento que a situação não tenha correspondido às expectativas.','Peço desculpa pelo silêncio — tem sido um período muito exigente.']},
+    {titulo:'Parágrafos completos',frases:['Peço desculpa pela demora em responder. Não é reflexo da importância que dou à sua situação — tem sido um período de grande exigência.','Lamento o transtorno que esta situação lhe causou. Asseguro-lhe que estamos a tratar de tudo com a maior prioridade.','Compreendo a sua insatisfação e reconheço que a situação não correu como deveria. O que posso garantir é que estamos completamente focados em resolver isto.']}
   ]},
   {id:'problemas',ico:'⚠️',titulo:'Problemas e situações difíceis',sub:'Reportar, escalar e gerir expectativas',secs:[
-    {titulo:'Frases curtas',frases:['Venho reportar uma situação que necessita de atenção urgente.','Identificámos um problema que precisa de resolução imediata.','A situação deteriorou-se e necessita de intervenção.','O cliente manifestou insatisfação com o estado da obra.','A situação está a criar um mal-estar que importa resolver.','Solicito o vosso apoio para resolver esta situação.','Solicito a vossa indicação dos próximos passos.','A situação está a ser tratada com prioridade.','O cliente aguarda uma resposta urgente.','É necessária uma decisão interna para avançar.','Solicito autorização para proceder.','A situação requer atenção imediata para não agravar.']},
-    {titulo:'Parágrafos completos',frases:['Venho reportar uma situação que está a causar mal-estar com o cliente e que necessita de resolução urgente. O cliente aguarda há demasiado tempo e qualquer atraso adicional agravará a situação.','Identifiquei um problema durante a visita à obra que necessita de intervenção imediata. Solicito indicação dos próximos passos e prazo de resposta.','A situação está a deteriorar-se e o cliente começa a mostrar sinais de impaciência justificada. Solicito o vosso apoio para alinharmos uma resposta concreta e rápida.','Após análise da situação, considero que esta deve ser escalada internamente para que possamos tomar uma decisão informada. Estou disponível para reunião presencial se necessário.']}
+    {titulo:'Frases curtas',frases:['Venho reportar uma situação que necessita de atenção urgente.','Identificámos um problema que precisa de resolução imediata.','O cliente manifestou insatisfação com o estado da obra.','A situação está a criar um mal-estar que importa resolver.','Solicito o vosso apoio para resolver esta situação.','Solicito a vossa indicação dos próximos passos.','O cliente aguarda uma resposta urgente.','A situação requer atenção imediata para não agravar.']},
+    {titulo:'Parágrafos completos',frases:['Venho reportar uma situação que está a causar mal-estar com o cliente e que necessita de resolução urgente.','Identifiquei um problema durante a visita à obra que necessita de intervenção imediata. Solicito indicação dos próximos passos e prazo de resposta.','A situação está a deteriorar-se e o cliente começa a mostrar sinais de impaciência justificada. Solicito o vosso apoio para alinharmos uma resposta concreta e rápida.']}
   ]},
   {id:'resolucao',ico:'✔️',titulo:'Resolução e encerramento',sub:'Comunicar que está resolvido e fechar assuntos',secs:[
-    {titulo:'Frases curtas',frases:['A situação foi resolvida com sucesso.','O assunto está encerrado.','O processo foi concluído conforme o previsto.','A questão ficou resolvida.','Tudo tratado — pode avançar com tranquilidade.','A situação está normalizada.','O problema foi identificado e corrigido.','O cliente confirmou a sua satisfação.','O processo foi encerrado com sucesso.','Ficou tudo resolvido a contento de todos.','Dou este assunto por encerrado.']},
-    {titulo:'Parágrafos completos',frases:['Venho informar que a situação foi resolvida com sucesso. O cliente ficou satisfeito com a intervenção e o processo está agora encerrado.','Após as devidas diligências, a situação está normalizada. Agradeço o vosso apoio ao longo deste processo — foi determinante para chegarmos a esta solução.','Tenho o prazer de informar que o projecto foi concluído dentro do prazo e que o cliente manifestou a sua satisfação. Obrigado pela colaboração de todos os envolvidos.','O problema foi identificado, tratado e resolvido. A situação está encerrada e o cliente informado. Não carece de mais acompanhamento da nossa parte.']}
+    {titulo:'Frases curtas',frases:['A situação foi resolvida com sucesso.','O assunto está encerrado.','Tudo tratado — pode avançar com tranquilidade.','A situação está normalizada.','O cliente confirmou a sua satisfação.','Ficou tudo resolvido a contento de todos.']},
+    {titulo:'Parágrafos completos',frases:['Venho informar que a situação foi resolvida com sucesso. O cliente ficou satisfeito com a intervenção e o processo está agora encerrado.','Após as devidas diligências, a situação está normalizada. Agradeço o vosso apoio ao longo deste processo.']}
   ]},
   {id:'disponibilidade',ico:'🤝',titulo:'Disponibilidade e apoio',sub:'Mostrar presença, abertura e compromisso',secs:[
-    {titulo:'Frases curtas',frases:['Estou disponível para qualquer esclarecimento.','Estou disponível para o que for necessário.','Pode contar comigo.','Qualquer dúvida é só dizer.','Estou ao seu dispor.','Podem contar comigo para o que precisarem.','Não hesite em contactar-me.','Estou disponível por telefone ou email.','Estou disponível também por WhatsApp.','Estou disponível para reunião presencial.','Qualquer dúvida ou ajuste, é só dizer.','Se vir algum ponto a ajustar, diga-me.','Pode contar com a minha total disponibilidade.','Estou ao seu lado neste processo.']},
-    {titulo:'Parágrafos completos',frases:['Estou completamente disponível para acompanhar esta situação. Não hesite em contactar-me a qualquer momento — seja por telefone, email ou WhatsApp.','Quero que saiba que pode contar comigo para o que for necessário. Este projecto é uma prioridade e darei a atenção que merece.','A minha disponibilidade é total. Sempre que precisar de esclarecimentos, ajustes ou simplesmente de uma conversa para alinhar expectativas, estou aqui.','Estou a acompanhar a situação de perto e qualquer novidade que surja será imediatamente comunicada. Pode ficar descansado.']}
+    {titulo:'Frases curtas',frases:['Estou disponível para qualquer esclarecimento.','Pode contar comigo.','Qualquer dúvida é só dizer.','Não hesite em contactar-me.','Estou disponível por telefone ou email.','Qualquer dúvida ou ajuste, é só dizer.','Se vir algum ponto a ajustar, diga-me.']},
+    {titulo:'Parágrafos completos',frases:['Estou completamente disponível para acompanhar esta situação. Não hesite em contactar-me a qualquer momento — seja por telefone, email ou WhatsApp.','Quero que saiba que pode contar comigo para o que for necessário. Este projecto é uma prioridade e darei a atenção que merece.']}
   ]},
   {id:'agradecimento',ico:'💛',titulo:'Agradecimento',sub:'Agradecer de formas diferentes conforme o contexto',secs:[
-    {titulo:'Frases curtas',frases:['Obrigado pela sua confiança.','Obrigado pela sua compreensão.','Obrigado pela sua paciência.','Obrigado pela colaboração.','Obrigado pela disponibilidade.','Agradeço o vosso apoio.','Agradeço a vossa atenção.','Muito obrigado pela confiança depositada.','Fico grato pelo vosso acompanhamento.','Obrigado por nos dar a oportunidade de resolver a situação.','Obrigado por confiar no nosso trabalho.','Agradeço a vossa colaboração e paciência ao longo deste processo.']},
-    {titulo:'Parágrafos completos',frases:['Quero agradecer-lhe a confiança que deposita no nosso trabalho. É esse reconhecimento que nos motiva a dar sempre o melhor de nós.','Obrigado pela sua paciência e compreensão ao longo deste processo. Situações como esta são sempre desafiantes e a sua postura facilitou muito a resolução.','Agradeço sinceramente a vossa colaboração. O vosso apoio foi determinante para chegarmos a uma solução satisfatória para todas as partes.','Obrigado por nos ter dado a oportunidade de resolver a situação. Valorizamos muito a vossa confiança e trabalharemos para não a defraudar.']}
+    {titulo:'Frases curtas',frases:['Obrigado pela sua confiança.','Obrigado pela sua compreensão.','Obrigado pela sua paciência.','Obrigado pela colaboração.','Obrigado pela disponibilidade.','Agradeço o vosso apoio.','Agradeço a vossa atenção.','Obrigado por nos dar a oportunidade de resolver a situação.']},
+    {titulo:'Parágrafos completos',frases:['Quero agradecer-lhe a confiança que deposita no nosso trabalho. É esse reconhecimento que nos motiva a dar sempre o melhor de nós.','Obrigado pela sua paciência e compreensão ao longo deste processo. Situações como esta são sempre desafiantes e a sua postura facilitou muito a resolução.']}
   ]},
   {id:'celebracao',ico:'🎉',titulo:'Celebração e reconhecimento',sub:'Felicitações, boas notícias e aprovações',secs:[
-    {titulo:'Frases curtas',frases:['Excelente notícia!','Fico muito satisfeito com esta decisão.','É uma óptima escolha.','Estou muito contente com esta novidade.','Que boa notícia — parabéns!','Ficou perfeito.','O resultado ficou acima das expectativas.','O cliente aprovou — óptimas notícias!','É um prazer trabalhar neste projecto.','O projecto ficou fantástico.','É um resultado do qual todos nos podemos orgulhar.','O esforço valeu a pena.']},
-    {titulo:'Parágrafos completos',frases:['Tenho o prazer de informar que o cliente aprovou a proposta. É uma excelente notícia e o resultado de muito trabalho e dedicação. Parabéns a todos os envolvidos.','Que boa notícia! Fico muito satisfeito com o resultado — é exactamente o que trabalhámos para alcançar. Obrigado pela confiança ao longo de todo o processo.','É com muito agrado que partilho esta boa notícia convosco. O projecto foi aprovado e podemos agora avançar com confiança para as próximas etapas.','Parabéns pelo excelente trabalho. O cliente ficou encantado com o resultado e é isso que torna este trabalho tão gratificante.']}
+    {titulo:'Frases curtas',frases:['Excelente notícia!','Fico muito satisfeito com esta decisão.','É uma óptima escolha.','O cliente aprovou — óptimas notícias!','O projecto ficou fantástico.','O esforço valeu a pena.']},
+    {titulo:'Parágrafos completos',frases:['Tenho o prazer de informar que o cliente aprovou a proposta. É uma excelente notícia e o resultado de muito trabalho e dedicação.','Que boa notícia! Fico muito satisfeito com o resultado — é exactamente o que trabalhámos para alcançar.']}
   ]},
   {id:'pessoal',ico:'💬',titulo:'Pessoal e próximo',sub:'Para clientes com quem tens mais proximidade',secs:[
-    {titulo:'Frases curtas',frases:['Foi um prazer trabalhar consigo.','Espero que fique satisfeito com o resultado.','Qualquer coisa que precise, já sabe onde estou.','É sempre um prazer!','Até à próxima!','Um abraço!','Bom proveito com a nova cozinha!','Espero que desfrute muito do espaço.','Fico feliz que correu tudo bem.','Foi bom trabalhar consigo neste projecto.','Cuide-se!']},
-    {titulo:'Parágrafos completos',frases:['Foi um prazer acompanhar este projecto de perto. Espero que desfrute muito do espaço renovado — ficou mesmo bonito.','É sempre muito gratificante quando um projecto corre bem e o cliente fica satisfeito. Obrigado pela simpatia e pela paciência ao longo de todo o processo.','Fico muito contente por termos conseguido resolver a situação. Sei que não foi fácil e aprecio muito a compreensão que mostrou durante todo o processo.','Foi um gosto trabalhar consigo. Sempre que precisar de qualquer coisa, já sabe que pode contar comigo. Cuide-se!']}
+    {titulo:'Frases curtas',frases:['Foi um prazer trabalhar consigo.','Espero que fique satisfeito com o resultado.','Qualquer coisa que precise, já sabe onde estou.','É sempre um prazer!','Até à próxima!','Um abraço!','Bom proveito com a nova cozinha!','Espero que desfrute muito do espaço.','Foi bom trabalhar consigo neste projecto.','Cuide-se!']},
+    {titulo:'Parágrafos completos',frases:['Foi um prazer acompanhar este projecto de perto. Espero que desfrute muito do espaço renovado.','É sempre muito gratificante quando um projecto corre bem e o cliente fica satisfeito. Obrigado pela simpatia e pela paciência ao longo de todo o processo.']}
   ]},
   {id:'formal',ico:'📋',titulo:'Formal e institucional',sub:'Para comunicações formais ou escaladas',secs:[
-    {titulo:'Frases curtas',frases:['Venho por este meio comunicar formalmente.','Para os devidos efeitos, venho informar.','Para conhecimento de V. Exas.,','Em nome da Leroy Merlin Portugal,','No âmbito do processo referenciado,','Nos termos acordados,','Para efeitos de registo,','De acordo com o estipulado,','Em cumprimento do acordado,','Solicito a vossa análise e parecer.','Aguardo a vossa posição formal.','Solicito a vossa validação.','Reservo o direito de escalar esta situação internamente.']},
-    {titulo:'Parágrafos completos',frases:['Venho por este meio formalizar a comunicação relativa ao processo em apreço, solicitando a vossa análise e indicação dos próximos passos.','Para efeitos de registo e para os devidos efeitos legais e contratuais, venho comunicar formalmente a situação identificada, reservando todos os direitos.','No âmbito do processo referenciado, e após análise interna da situação, solicito formalmente a intervenção do departamento responsável com carácter de urgência.','Em nome da Leroy Merlin Portugal, venho formalizar o nosso compromisso de resolução desta situação, assegurando que serão tomadas todas as medidas necessárias.']}
+    {titulo:'Frases curtas',frases:['Venho por este meio comunicar formalmente.','Para os devidos efeitos, venho informar.','Para conhecimento de V. Exas.,','Em nome da Leroy Merlin Portugal,','No âmbito do processo referenciado,','Solicito a vossa análise e parecer.','Aguardo a vossa posição formal.','Solicito a vossa validação.']},
+    {titulo:'Parágrafos completos',frases:['Venho por este meio formalizar a comunicação relativa ao processo em apreço, solicitando a vossa análise e indicação dos próximos passos.','No âmbito do processo referenciado, e após análise interna da situação, solicito formalmente a intervenção do departamento responsável com carácter de urgência.']}
   ]},
   {id:'encerramento',ico:'🏁',titulo:'Encerramento de projecto',sub:'Conclusão, entrega e satisfação do cliente',secs:[
-    {titulo:'Frases curtas',frases:['O projecto foi concluído com sucesso.','A instalação está concluída.','O cliente aceitou a entrega.','O projecto foi entregue dentro do prazo.','Tudo concluído conforme o previsto.','O cliente manifestou a sua satisfação.','A proposta foi aprovada — podemos avançar.','Damos por encerrado este projecto.','Foi um projecto desafiante e gratificante.','O resultado final superou as expectativas.','O cliente está muito satisfeito com o resultado.','Foi uma colaboração de sucesso.']},
-    {titulo:'Parágrafos completos',frases:['Tenho o prazer de informar que o projecto foi concluído com sucesso e que o cliente ficou muito satisfeito com o resultado final. Foi uma colaboração de excelência.','O processo de instalação foi concluído dentro do prazo acordado e o cliente aceitou a entrega sem reservas. Damos este projecto por encerrado.','É com satisfação que comunico a conclusão deste projecto. Foi um percurso com os seus desafios, mas o resultado final justificou cada esforço.','O cliente aprovou o projecto e manifestou a sua satisfação com o resultado. É sempre gratificante ver um projecto chegar a bom porto.']}
+    {titulo:'Frases curtas',frases:['O projecto foi concluído com sucesso.','A instalação está concluída.','O cliente aceitou a entrega.','Tudo concluído conforme o previsto.','O cliente manifestou a sua satisfação.','A proposta foi aprovada — podemos avançar.','Foi uma colaboração de sucesso.']},
+    {titulo:'Parágrafos completos',frases:['Tenho o prazer de informar que o projecto foi concluído com sucesso e que o cliente ficou muito satisfeito com o resultado final.','O processo de instalação foi concluído dentro do prazo acordado e o cliente aceitou a entrega sem reservas. Damos este projecto por encerrado.']}
   ]}
 ];
 
@@ -1235,43 +1249,26 @@ var BLOCO_CAT={
 
 function pgBiblioteca(){
   var total=BIBLIOTECA.reduce(function(a,c){ return a+c.secs.reduce(function(b,s){ return b+s.frases.length; },0); },0);
-  return '<div class="page-eyebrow">Referência</div>'+
-    '<div class="page-title">📚 Biblioteca de <em>Frases</em></div>'+
-    '<div class="page-sub">'+total+' frases organizadas por tema. Pesquisa, copia e guarda favoritos.</div>'+
-    '<div class="bib-bar"><div class="bib-sw"><span class="bib-si">🔍</span>'+
-    '<input class="bib-inp" id="bib-search" placeholder="Pesquisar frases..." oninput="bibFiltrar()"></div>'+
-    '<div class="bib-count" id="bib-count">'+total+' frases</div></div>'+
-    '<div class="bib-cats" id="bib-cats"></div>'+
+  return '<div class="page-eyebrow">Referência</div>' +
+    '<div class="page-title">📚 Biblioteca de <em>Frases</em></div>' +
+    '<div class="page-sub">'+total+' frases organizadas por tema.</div>' +
+    '<div class="bib-bar"><div class="bib-sw"><span class="bib-si">🔍</span>' +
+    '<input class="bib-inp" id="bib-search" placeholder="Pesquisar frases..." oninput="bibFiltrar()"></div>' +
+    '<div class="bib-count" id="bib-count">'+total+' frases</div></div>' +
+    '<div class="bib-cats" id="bib-cats"></div>' +
     '<div id="bib-main"></div>';
 }
 
-function bibInit(){
-  _bibCat=null; _bibQ='';
-  bibRenderCats();
-  bibRenderMain();
-}
+function bibInit(){ _bibCat=null; _bibQ=''; bibRenderCats(); bibRenderMain(); }
 
-function bibFiltrar(){
-  _bibQ=document.getElementById('bib-search')?.value||'';
-  _bibCat=null;
-  bibRenderCats();
-  bibRenderMain();
-}
+function bibFiltrar(){ _bibQ=document.getElementById('bib-search')?document.getElementById('bib-search').value:''; _bibCat=null; bibRenderCats(); bibRenderMain(); }
 
-function bibSelCat(id){
-  _bibCat=_bibCat===id?null:id;
-  _bibQ='';
-  var el=document.getElementById('bib-search'); if(el) el.value='';
-  bibRenderCats();
-  bibRenderMain();
-}
+function bibSelCat(id){ _bibCat=_bibCat===id?null:id; _bibQ=''; var el=document.getElementById('bib-search'); if(el) el.value=''; bibRenderCats(); bibRenderMain(); }
 
 function bibRenderCats(){
   var el=document.getElementById('bib-cats'); if(!el) return;
-  el.innerHTML='<div class="bib-cat '+(!_bibCat?'at':'')+'" onclick="bibSelCat(null)">Todas</div>'+
-    BIBLIOTECA.map(function(c){
-      return '<div class="bib-cat '+(_bibCat===c.id?'at':'')+'" onclick="bibSelCat(\''+c.id+'\')">'+c.ico+' '+c.titulo+'</div>';
-    }).join('');
+  el.innerHTML='<div class="bib-cat '+(!_bibCat?'at':'')+'" onclick="bibSelCat(null)">Todas</div>' +
+    BIBLIOTECA.map(function(c){ return '<div class="bib-cat '+(_bibCat===c.id?'at':'')+'" onclick="bibSelCat(\''+c.id+'\')">'+c.ico+' '+c.titulo+'</div>'; }).join('');
 }
 
 function bibRenderMain(){
@@ -1285,96 +1282,87 @@ function bibRenderMain(){
       var fr=ql?sec.frases.filter(function(f){ return f.toLowerCase().indexOf(ql)>=0; }):sec.frases;
       if(!fr.length) return;
       total+=fr.length;
-      catHtml+='<div class="bib-st">'+sec.titulo+'</div><div class="bib-fs">'+
+      catHtml+='<div class="bib-st">'+sec.titulo+'</div><div class="bib-fs">' +
         fr.map(function(f){
           var fav=isFav(f);
-          return '<div class="bib-f"><div class="bib-ft">'+f+'</div>'+
-            '<div class="bib-fa">'+
-            '<button class="btn-cb" onclick="bibCopiar(\''+esc(f)+'\')">Copiar</button>'+
-            '<button class="btn-fb'+(fav?' at':'')+'" onclick="bibTogFav(\''+esc(f)+'\',\''+cat.titulo+'\')">⭐</button>'+
+          return '<div class="bib-f"><div class="bib-ft">'+f+'</div>' +
+            '<div class="bib-fa">' +
+            '<button class="btn-cb" onclick="bibCopiar(\''+esc(f)+'\')">Copiar</button>' +
+            '<button class="btn-fb'+(fav?' at':'')+'" onclick="bibTogFav(\''+esc(f)+'\',\''+cat.titulo+'\')">⭐</button>' +
             '</div></div>';
-        }).join('')+
-        '</div>';
+        }).join('') + '</div>';
     });
     if(!catHtml) return;
-    html+='<div style="margin-bottom:28px">'+
-      '<div style="font-family:var(--serif);font-size:20px;font-weight:300;margin-bottom:2px">'+cat.ico+' '+cat.titulo+'</div>'+
-      '<div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">'+cat.sub+'</div>'+
+    html+='<div style="margin-bottom:28px">' +
+      '<div style="font-family:var(--serif);font-size:20px;font-weight:300;margin-bottom:2px">'+cat.ico+' '+cat.titulo+'</div>' +
+      '<div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">'+cat.sub+'</div>' +
       catHtml+'</div>';
   });
   el.innerHTML=html||'<div class="empty"><div class="empty-ico">🔍</div><div class="empty-t">Nenhuma frase encontrada</div></div>';
   var c=document.getElementById('bib-count'); if(c) c.textContent=total+' frases';
 }
 
-function bibCopiar(t){
-  navigator.clipboard.writeText(t.replace(/\\n/g,'\n')).then(function(){ toast('Copiado!'); });
-}
+function bibCopiar(t){ navigator.clipboard.writeText(t.replace(/\\n/g,'\n')).then(function(){ toast('Copiado!'); }); }
+function bibTogFav(t,cat){ var texto=t.replace(/\\n/g,'\n'); var ficou=toggleFav(texto,cat); toast(ficou?'⭐ Guardado nos favoritos':'Removido dos favoritos'); bibRenderMain(); }
 
-function bibTogFav(t,cat){
-  var texto=t.replace(/\\n/g,'\n');
-  var ficou=toggleFav(texto,cat);
-  toast(ficou?'⭐ Guardado nos favoritos':'Removido dos favoritos');
-  bibRenderMain();
-}
+// ═══════════════════════════════════════════════════════
+// FAVORITOS
+// ═══════════════════════════════════════════════════════
 
-// ── FAVORITOS ─────────────────────────────────────────
 function pgFavoritos(){
   var favs=getFavs();
-  if(!favs.length) return '<div class="page-eyebrow">Guardado</div><div class="page-title">⭐ <em>Favoritos</em></div>'+
+  if(!favs.length) return '<div class="page-eyebrow">Guardado</div><div class="page-title">⭐ <em>Favoritos</em></div>' +
     '<div class="empty"><div class="empty-ico">⭐</div><div class="empty-t">Sem favoritos ainda</div><div class="empty-s">Clica em ⭐ em qualquer frase da biblioteca.</div></div>';
-  return '<div class="page-eyebrow">Guardado</div><div class="page-title">⭐ <em>Favoritos</em></div>'+
-    '<div class="page-sub">'+favs.length+' frase(s) guardada(s)</div>'+
-    '<div class="fav-grid">'+
+  return '<div class="page-eyebrow">Guardado</div><div class="page-title">⭐ <em>Favoritos</em></div>' +
+    '<div class="page-sub">'+favs.length+' frase(s) guardada(s)</div>' +
+    '<div class="fav-grid">' +
     favs.map(function(f){
-      return '<div class="fav-card"><div class="fav-body">'+
-        '<div class="fav-cat">'+f.categoria+' · '+f.data+'</div>'+
-        '<div class="fav-txt">'+f.texto+'</div></div>'+
-        '<div style="display:flex;flex-direction:column;gap:5px">'+
-        '<button class="btn-ic" onclick="navigator.clipboard.writeText(\''+esc(f.texto)+'\').then(function(){ toast(\'Copiado!\'); })">📋</button>'+
-        '<button class="btn-ic" onclick="remFav('+f.id+')">🗑</button>'+
+      return '<div class="fav-card"><div class="fav-body">' +
+        '<div class="fav-cat">'+f.categoria+' · '+f.data+'</div>' +
+        '<div class="fav-txt">'+f.texto+'</div></div>' +
+        '<div style="display:flex;flex-direction:column;gap:5px">' +
+        '<button class="btn-ic" onclick="navigator.clipboard.writeText(\''+esc(f.texto)+'\').then(function(){ toast(\'Copiado!\'); })">📋</button>' +
+        '<button class="btn-ic" onclick="remFav('+f.id+')">🗑</button>' +
         '</div></div>';
-    }).join('')+
-    '</div>';
+    }).join('') + '</div>';
 }
 
-function remFav(id){
-  removeFav(id);
-  navegar('favoritos');
-  toast('Removido dos favoritos');
-}
+function remFav(id){ removeFav(id); navegar('favoritos'); toast('Removido dos favoritos'); }
 
-// ── RASCUNHOS ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// RASCUNHOS
+// ═══════════════════════════════════════════════════════
+
 function pgRascunhos(){
   var rascs=getRascs();
-  if(!rascs.length) return '<div class="page-eyebrow">Guardado</div><div class="page-title">📝 <em>Rascunhos</em></div>'+
+  if(!rascs.length) return '<div class="page-eyebrow">Guardado</div><div class="page-title">📝 <em>Rascunhos</em></div>' +
     '<div class="empty"><div class="empty-ico">📝</div><div class="empty-t">Sem rascunhos ainda</div><div class="empty-s">Clica em "Guardar rascunho" num construtor.</div></div>';
-  return '<div class="page-eyebrow">Guardado</div><div class="page-title">📝 <em>Rascunhos</em></div>'+
-    '<div class="page-sub">'+rascs.length+' rascunho(s)</div>'+
+  return '<div class="page-eyebrow">Guardado</div><div class="page-title">📝 <em>Rascunhos</em></div>' +
+    '<div class="page-sub">'+rascs.length+' rascunho(s)</div>' +
     rascs.map(function(r){
-      return '<div class="rasc-card">'+
-        '<div class="rasc-hdr"><div class="rasc-titulo">'+r.titulo+'</div><div class="rasc-data">'+r.data+' '+r.hora+'</div></div>'+
-        '<div class="rasc-txt">'+r.texto+'</div>'+
-        '<div class="rasc-acoes">'+
-        '<button class="btn-r" onclick="navigator.clipboard.writeText(\''+esc(r.texto)+'\').then(function(){ toast(\'Copiado!\'); })">📋 Copiar</button>'+
-        '<button class="btn-r del" onclick="remRasc('+r.id+')">🗑 Remover</button>'+
+      return '<div class="rasc-card">' +
+        '<div class="rasc-hdr"><div class="rasc-titulo">'+r.titulo+'</div><div class="rasc-data">'+r.data+' '+r.hora+'</div></div>' +
+        '<div class="rasc-txt">'+r.texto+'</div>' +
+        '<div class="rasc-acoes">' +
+        '<button class="btn-r" onclick="navigator.clipboard.writeText(\''+esc(r.texto)+'\').then(function(){ toast(\'Copiado!\'); })">📋 Copiar</button>' +
+        '<button class="btn-r del" onclick="remRasc('+r.id+')">🗑 Remover</button>' +
         '</div></div>';
     }).join('');
 }
 
-function remRasc(id){
-  removeRasc(id);
-  navegar('rascunhos');
-  toast('Rascunho removido');
-}
+function remRasc(id){ removeRasc(id); navegar('rascunhos'); toast('Rascunho removido'); }
 
-// ── MODAL BIBLIOTECA ──────────────────────────────────
-var _mbBlocoId=null, _mbCatId=null, _mbFiltCat=null;
+// ═══════════════════════════════════════════════════════
+// MODAL BIBLIOTECA
+// ═══════════════════════════════════════════════════════
+
+var _mbBlocoId=null, _mbFiltCat=null;
 
 function modalBibAbrir(blocoId){
   _mbBlocoId=blocoId;
-  _mbCatId=BLOCO_CAT[blocoId]||null;
-  _mbFiltCat=_mbCatId;
-  var cat=_mbCatId?BIBLIOTECA.find(function(c){ return c.id===_mbCatId; }):null;
+  var catId=BLOCO_CAT[blocoId]||null;
+  _mbFiltCat=catId;
+  var cat=catId?BIBLIOTECA.find(function(c){ return c.id===catId; }):null;
   var hint=document.getElementById('modal-hint');
   if(hint) hint.textContent=cat?'Sugestão: '+cat.titulo:'Pesquisa em toda a biblioteca';
   var si=document.getElementById('modal-search'); if(si) si.value='';
@@ -1384,9 +1372,7 @@ function modalBibAbrir(blocoId){
   setTimeout(function(){ var el=document.getElementById('modal-search'); if(el) el.focus(); },80);
 }
 
-function modalBibFechar(){
-  document.getElementById('modal-bib').classList.remove('aberto');
-}
+function modalBibFechar(){ document.getElementById('modal-bib').classList.remove('aberto'); }
 
 function modalBibSelCat(id){
   _mbFiltCat=id;
@@ -1396,13 +1382,13 @@ function modalBibSelCat(id){
 }
 
 function modalBibFiltrar(){
-  var q=document.getElementById('modal-search')?.value||'';
+  var q=document.getElementById('modal-search')?document.getElementById('modal-search').value:'';
   modalBibRenderLista(q);
 }
 
 function modalBibRenderCats(){
   var el=document.getElementById('modal-cats'); if(!el) return;
-  el.innerHTML='<div class="modal-cat-pill '+(!_mbFiltCat?'at':'')+'" onclick="modalBibSelCat(null)">Todas</div>'+
+  el.innerHTML='<div class="modal-cat-pill '+(!_mbFiltCat?'at':'')+'" onclick="modalBibSelCat(null)">Todas</div>' +
     BIBLIOTECA.map(function(c){
       return '<div class="modal-cat-pill '+(_mbFiltCat===c.id?'at':'')+'" onclick="modalBibSelCat(\''+c.id+'\')">'+c.ico+' '+c.titulo+'</div>';
     }).join('');
@@ -1426,16 +1412,14 @@ function modalBibRenderLista(q){
 }
 
 function modalBibInserir(frase){
-  var texto=frase.replace(/\\n/g,'\n');
   if(!_mbBlocoId) return;
+  var texto=frase.replace(/\\n/g,'\n');
   var inp=document.getElementById('l-'+_mbBlocoId);
   if(inp){
     inp.value=texto;
-    // Disparar livreOpc manualmente
-    var blocoId=_mbBlocoId;
-    var bloco=document.getElementById(blocoId);
-    var s=document.getElementById('s-'+blocoId);
-    var opts=document.getElementById('o-'+blocoId);
+    var bloco=document.getElementById(_mbBlocoId);
+    var s=document.getElementById('s-'+_mbBlocoId);
+    var opts=document.getElementById('o-'+_mbBlocoId);
     if(opts) opts.querySelectorAll('.opc').forEach(function(o){ o.classList.remove('av','aa'); });
     if(bloco) bloco.classList.add('sv');
     if(s) s.textContent=texto.slice(0,28);
@@ -1445,34 +1429,27 @@ function modalBibInserir(frase){
   toast('Frase inserida ✓');
 }
 
-// ── MODAL CONTACTOS ───────────────────────────────────
-function modalCtcAbrir(){
-  ctcRenderLista();
-  document.getElementById('modal-ctc').classList.add('aberto');
-}
+// ═══════════════════════════════════════════════════════
+// MODAL CONTACTOS
+// ═══════════════════════════════════════════════════════
 
-function modalCtcFechar(){
-  document.getElementById('modal-ctc').classList.remove('aberto');
-}
+function modalCtcAbrir(){ ctcRenderLista(); document.getElementById('modal-ctc').classList.add('aberto'); }
+function modalCtcFechar(){ document.getElementById('modal-ctc').classList.remove('aberto'); }
 
 function ctcRenderLista(){
   var ctcs=getCtcs();
   var el=document.getElementById('ctc-lista'); if(!el) return;
-  if(!ctcs.length){
-    el.innerHTML='<p style="font-size:13px;color:var(--ink-4);font-style:italic">Nenhum contacto guardado ainda.</p>';
-    return;
-  }
+  if(!ctcs.length){ el.innerHTML='<p style="font-size:13px;color:var(--ink-4);font-style:italic">Nenhum contacto guardado ainda.</p>'; return; }
   el.innerHTML=ctcs.map(function(c){
-    return '<div class="ctc-item">'+
-      '<div class="ctc-info"><div class="ctc-nome">'+c.nome+'</div><div class="ctc-email">'+c.email+'</div></div>'+
-      '<button class="btn-dc" onclick="ctcRemover('+c.id+')">×</button>'+
-      '</div>';
+    return '<div class="ctc-item">' +
+      '<div class="ctc-info"><div class="ctc-nome">'+c.nome+'</div><div class="ctc-email">'+c.email+'</div></div>' +
+      '<button class="btn-dc" onclick="ctcRemover('+c.id+')">×</button></div>';
   }).join('');
 }
 
 function ctcAdicionar(){
-  var nome=document.getElementById('ctc-nome')?.value.trim();
-  var email=document.getElementById('ctc-email')?.value.trim();
+  var nome=document.getElementById('ctc-nome')?document.getElementById('ctc-nome').value.trim():'';
+  var email=document.getElementById('ctc-email')?document.getElementById('ctc-email').value.trim():'';
   if(!nome||!email) return;
   var ctcs=getCtcs();
   ctcs.push({id:Date.now(),nome:nome,email:email});
@@ -1489,22 +1466,27 @@ function ctcRemover(id){
   document.dispatchEvent(new CustomEvent('ctcActualizado'));
 }
 
-// ── FECHAR MODAIS COM CLICK FORA ──────────────────────
-document.getElementById('modal-bib').addEventListener('click', function(e){
-  if(e.target===this) modalBibFechar();
-});
-document.getElementById('modal-ctc').addEventListener('click', function(e){
-  if(e.target===this) modalCtcFechar();
-});
+// ═══════════════════════════════════════════════════════
+// FECHAR MODAIS COM CLICK FORA
+// ═══════════════════════════════════════════════════════
 
-// ── PWA Service Worker ────────────────────────────────
+document.getElementById('modal-bib').addEventListener('click', function(e){ if(e.target===this) modalBibFechar(); });
+document.getElementById('modal-ctc').addEventListener('click', function(e){ if(e.target===this) modalCtcFechar(); });
+
+// ═══════════════════════════════════════════════════════
+// PWA
+// ═══════════════════════════════════════════════════════
+
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('sw.js').catch(function(){});
   });
 }
 
-// ── ARRANQUE ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// ARRANQUE
+// ═══════════════════════════════════════════════════════
+
 navegar('home');
 </script>
 </body>
