@@ -430,7 +430,8 @@ function triggerRender(){
 
 function mkBloco(id, num, titulo, cor, opcs, semTxt, livrePH){
   var opcsHtml=opcs.map(function(o){
-    return '<div class="opc" data-v="'+o[0].replace(/\n/g,'&#10;').replace(/'/g,'&#39;')+
+    var val=o[0].replace(/\n/g,'&#10;').replace(/'/g,'&#39;');
+    return '<div class="opc" data-v="'+val+
            '" onclick="selOpc(\''+id+'\',\''+cor+'\',this)">'+o[1]+'</div>';
   }).join('');
   return '<div class="bloco" id="'+id+'">'+
