@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2C5E1A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Comunicação LM">
+<link rel="manifest" href="manifest.json">
 <title>Comunicação LM</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
@@ -980,41 +986,50 @@ var RESPOSTAS=[
 function pgRespostas(){
   var html='<div class="page-eyebrow">Módulo</div>'+
     '<div class="page-title">💭 Respostas <em>Rápidas</em></div>'+
-    '<div class="page-sub">Mensagens curtas para o dia a dia. Clica para copiar.</div>';
-
+    '<div class="page-sub">Mensagens curtas para o dia a dia. Abre a categoria e clica para copiar.</div>'+
+    '<div class="blocos">';
   RESPOSTAS.forEach(function(cat){
-    html+='<div style="margin-bottom:28px">'+
-      '<div style="font-family:var(--serif);font-size:20px;font-weight:300;margin-bottom:14px">'+cat.ico+' '+cat.titulo+'</div>'+
-      '<div style="display:flex;flex-direction:column;gap:6px">'+
+    html+='<div class="bloco" id="rr-'+cat.id+'">'+
+      '<div class="bloco-hdr" onclick="rrToggle(\"'+cat.id+'\")">'+
+      '<span style="font-size:18px;width:22px;text-align:center;flex-shrink:0">'+cat.ico+'</span>'+
+      '<span class="btit">'+cat.titulo+'</span>'+
+      '<span style="font-family:var(--mono);font-size:10px;color:var(--ink-4)">'+cat.msgs.length+' mensagens</span>'+
+      '<span class="chev">▼</span></div>'+
+      '<div class="opcoes" id="rro-'+cat.id+'" style="flex-direction:column;gap:6px">'+
       cat.msgs.map(function(msg){
-        return '<div style="background:var(--paper);border:1px solid var(--paper-3);border-radius:8px;padding:12px 14px;'+
-          'display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:var(--sh);transition:border-color .15s;cursor:pointer"'+
-          ' onclick="rrCopiar(this,\''+esc(msg)+'\')" onmouseover="this.style.borderColor=\'var(--green-brd)\'" onmouseout="this.style.borderColor=\'var(--paper-3)\'">' +
+        return '<div style="background:var(--paper-2);border:1px solid var(--paper-3);border-radius:8px;'+
+          'padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:all .15s"'+
+          ' onclick="rrCopiar(this,\"'+esc(msg)+'\")">'+
           '<span style="font-size:13px;color:var(--ink-2);line-height:1.6">'+msg+'</span>'+
-          '<span style="font-size:11px;color:var(--ink-4);flex-shrink:0;font-family:var(--mono)">copiar</span>'+
+          '<span style="font-size:11px;color:var(--ink-4);flex-shrink:0;font-family:var(--mono);white-space:nowrap">copiar</span>'+
           '</div>';
       }).join('')+
       '</div></div>';
   });
+  html+='</div>';
   return html;
 }
 
+function rrToggle(id){
+  var bloco=document.getElementById('rr-'+id);
+  if(bloco) bloco.classList.toggle('aberto');
+}
+
 function rrCopiar(el, msg){
-  var texto=msg.replace(/\\n/g,'\n');
+  var texto=msg.replace(/\n/g,'\n');
   navigator.clipboard.writeText(texto).then(function(){
     var span=el.querySelector('span:last-child');
     var orig=span.textContent;
     span.textContent='✓ copiado';
     span.style.color='var(--green)';
-    el.style.borderColor='var(--green)';
+    el.style.borderColor='var(--green-brd)';
+    el.style.background='var(--green-pale)';
     setTimeout(function(){
-      span.textContent=orig;
-      span.style.color='';
-      el.style.borderColor='';
+      span.textContent=orig; span.style.color='';
+      el.style.borderColor=''; el.style.background='';
     }, 2000);
   });
 }
-
 // ── BIBLIOTECA ────────────────────────────────────────
 var _bibCat=null, _bibQ='';
 
@@ -1339,6 +1354,13 @@ document.getElementById('modal-bib').addEventListener('click', function(e){
 document.getElementById('modal-ctc').addEventListener('click', function(e){
   if(e.target===this) modalCtcFechar();
 });
+
+// ── PWA Service Worker ────────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
 
 // ── ARRANQUE ──────────────────────────────────────────
 navegar('home');
