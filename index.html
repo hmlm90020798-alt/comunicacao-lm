@@ -330,6 +330,8 @@ function esc(s){
 
 function fillD(tmpl, data){
   var r=String(tmpl);
+  // Interpretar \n literal como quebra de linha real
+  r=r.replace(/\\n/g,'\n');
   Object.keys(data).forEach(function(k){ r=r.split('{{'+k+'}}').join(data[k]); });
   return r;
 }
@@ -399,11 +401,13 @@ function getBVal(blocoId){
   var opts=document.getElementById('o-'+blocoId);
   if(!opts) return undefined;
   var ativo=opts.querySelector('.opc.av,.opc.aa');
-  // Se há campo livre preenchido, usa-o (permite edição sobre a opção seleccionada)
   var liv=document.getElementById('l-'+blocoId);
   if(liv && liv.value.trim()) return liv.value.trim();
-  // Sem campo livre, usa a opção seleccionada
-  if(ativo) return ativo.dataset.v!==undefined ? ativo.dataset.v : null;
+  if(ativo){
+    var val=ativo.dataset.v!==undefined ? ativo.dataset.v : null;
+    if(val) val=val.replace(/&#10;/g,'\n');
+    return val;
+  }
   return undefined;
 }
 
