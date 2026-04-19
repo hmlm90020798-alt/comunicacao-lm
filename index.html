@@ -232,6 +232,7 @@ body{font-family:var(--sans);background:var(--paper-2);color:var(--ink);min-heig
       <div class="nav-item" data-p="reporte" onclick="navegar('reporte')"><span class="nav-item-ico">⚠️</span> Reporte de Problema</div>
       <div class="nav-item" data-p="processuais" onclick="navegar('processuais')"><span class="nav-item-ico">💬</span> Mensagens Processuais</div>
       <div class="nav-item" data-p="biblioteca" onclick="navegar('biblioteca')"><span class="nav-item-ico">📚</span> Biblioteca de Frases</div>
+      <div class="nav-item" data-p="respostas" onclick="navegar('respostas')"><span class="nav-item-ico">💭</span> Respostas Rápidas</div>
     </div>
     <div>
       <span class="nav-lbl">Guardado</span>
@@ -343,6 +344,7 @@ function navegar(pagina){
   else if(pagina==='reporte')     { c.innerHTML=pgReporte(); rInit(); }
   else if(pagina==='processuais') { c.innerHTML=pgProcessuais(); prInit(); }
   else if(pagina==='biblioteca')  { c.innerHTML=pgBiblioteca(); bibInit(); }
+  else if(pagina==='respostas')   { c.innerHTML=pgRespostas(); }
   else if(pagina==='favoritos')   { c.innerHTML=pgFavoritos(); }
   else if(pagina==='rascunhos')   { c.innerHTML=pgRascunhos(); }
   window.scrollTo(0,0);
@@ -436,6 +438,7 @@ function pgHome(){
     hcard('⚠️','Reporte de Problema','Reporta situações com PC/OS, artigos e destinatários.','reporte')+
     hcard('💬','Mensagens Processuais','Respostas internas e para clientes com biblioteca integrada.','processuais')+
     hcard('📚','Biblioteca de Frases','+200 frases organizadas. Pesquisa, copia e favoritos.','biblioteca')+
+    hcard('💭','Respostas Rápidas','Mensagens curtas para o dia a dia — folga, confirmações, agendamentos.','respostas')+
     hcard('⭐','Favoritos','As frases que guardaste para acesso rápido.','favoritos')+
     hcard('📝','Rascunhos','Mensagens guardadas para continuar mais tarde.','rascunhos')+
     '</div>';
@@ -909,6 +912,107 @@ function prReset(){
   resetBlocos(['bi-1','bi-2','bi-3','bi-4','bi-5','bi-6','bi-7','bc-1','bc-2','bc-3','bc-4','bc-5','bc-6','bc-7']);
   var prev=document.getElementById('pr-prev');
   if(prev) prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>';
+}
+
+// ── RESPOSTAS RÁPIDAS ─────────────────────────────────
+var RESPOSTAS=[
+  {id:'folga',ico:'🌴',titulo:'Ausência e folga',msgs:[
+    'Estou de folga hoje. Amanhã entro em contacto.',
+    'Estou de folga hoje, mas vi a sua mensagem. Amanhã trato disto.',
+    'Estou de folga esta semana. Assim que regressar entro em contacto.',
+    'Estou fora do escritório hoje. Amanhã respondo.',
+    'Estou de folga — volto na segunda-feira e entro em contacto.',
+    'Vi a sua mensagem. Estou de folga mas amanhã trato disto sem falta.',
+    'Bom fim de semana! Na segunda estou de volta e entrarei em contacto.'
+  ]},
+  {id:'aguarda',ico:'⏳',titulo:'Aguarda / Em breve',msgs:[
+    'Recebi. Fico a tratar e dou notícias em breve.',
+    'Já vi. Estou a verificar e respondo em breve.',
+    'Ainda não tenho novidades mas não me esqueci.',
+    'Estou a tratar disto. Assim que tiver algo dou-lhe notícias.',
+    'Pedido recebido — estou a verificar e já lhe respondo.',
+    'Vou verificar e entro em contacto hoje ainda.',
+    'Deixa ficar — trato disto e aviso assim que estiver resolvido.',
+    'Boa pergunta — deixa-me confirmar e já te digo.'
+  ]},
+  {id:'confirmado',ico:'👍',titulo:'Confirmações',msgs:[
+    'Confirmado, obrigado.',
+    'Recebi, está tratado.',
+    'Perfeito, fica assim.',
+    'Sim, pode avançar.',
+    'Combinado!',
+    'Recebido. Obrigado pela informação.',
+    'Anotado, obrigado.',
+    'Está bem, fico à espera.',
+    'Perfeito. Qualquer coisa diz.',
+    'OK, está anotado.',
+    'Sim, estou a par.',
+    'Confirmado de parte a parte.'
+  ]},
+  {id:'agenda',ico:'📅',titulo:'Agendamento e combinações',msgs:[
+    'Quando é que lhe dá jeito falarmos?',
+    'Podemos combinar para a semana?',
+    'Que dia prefere para nos encontrarmos?',
+    'Fico disponível a partir de amanhã — quando lhe der jeito.',
+    'Pode ser na segunda de manhã?',
+    'Combino consigo assim que tiver a agenda confirmada.',
+    'Vamos combinar — quando tem disponibilidade?',
+    'Posso ligar-lhe amanhã de manhã?',
+    'Ficamos assim — qualquer alteração aviso com antecedência.'
+  ]},
+  {id:'pessoal',ico:'😊',titulo:'Pessoal e casual',msgs:[
+    'Obrigado pela mensagem!',
+    'Boa semana!',
+    'Bom fim de semana!',
+    'Obrigado, foi um prazer!',
+    'Até breve!',
+    'Cuide-se!',
+    'Com prazer, sempre que precisar.',
+    'Esteja bem!',
+    'Obrigado pela confiança.',
+    'Boa sorte com o projecto!',
+    'Fico contente que tenha corrido bem.',
+    'Qualquer coisa que precise, já sabe onde estou.',
+    'Um abraço e até à próxima!'
+  ]}
+];
+
+function pgRespostas(){
+  var html='<div class="page-eyebrow">Módulo</div>'+
+    '<div class="page-title">💭 Respostas <em>Rápidas</em></div>'+
+    '<div class="page-sub">Mensagens curtas para o dia a dia. Clica para copiar.</div>';
+
+  RESPOSTAS.forEach(function(cat){
+    html+='<div style="margin-bottom:28px">'+
+      '<div style="font-family:var(--serif);font-size:20px;font-weight:300;margin-bottom:14px">'+cat.ico+' '+cat.titulo+'</div>'+
+      '<div style="display:flex;flex-direction:column;gap:6px">'+
+      cat.msgs.map(function(msg){
+        return '<div style="background:var(--paper);border:1px solid var(--paper-3);border-radius:8px;padding:12px 14px;'+
+          'display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:var(--sh);transition:border-color .15s;cursor:pointer"'+
+          ' onclick="rrCopiar(this,\''+esc(msg)+'\')" onmouseover="this.style.borderColor=\'var(--green-brd)\'" onmouseout="this.style.borderColor=\'var(--paper-3)\'">' +
+          '<span style="font-size:13px;color:var(--ink-2);line-height:1.6">'+msg+'</span>'+
+          '<span style="font-size:11px;color:var(--ink-4);flex-shrink:0;font-family:var(--mono)">copiar</span>'+
+          '</div>';
+      }).join('')+
+      '</div></div>';
+  });
+  return html;
+}
+
+function rrCopiar(el, msg){
+  var texto=msg.replace(/\\n/g,'\n');
+  navigator.clipboard.writeText(texto).then(function(){
+    var span=el.querySelector('span:last-child');
+    var orig=span.textContent;
+    span.textContent='✓ copiado';
+    span.style.color='var(--green)';
+    el.style.borderColor='var(--green)';
+    setTimeout(function(){
+      span.textContent=orig;
+      span.style.color='';
+      el.style.borderColor='';
+    }, 2000);
+  });
 }
 
 // ── BIBLIOTECA ────────────────────────────────────────
