@@ -55,6 +55,7 @@ body{font-family:var(--sans);background:var(--paper-2);color:var(--ink);min-heig
 .prev-lbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--ink-4);padding-bottom:5px;border-bottom:1px solid var(--paper-3)}
 .prev-box{flex:1;background:var(--paper-2);border:1px solid var(--paper-3);border-radius:var(--r);padding:16px;font-size:13px;color:var(--ink-2);line-height:1.9;white-space:pre-wrap;overflow-y:auto;min-height:160px}
 .ph{color:var(--ink-4);font-style:italic}
+.prev-assin{font-size:12px;color:var(--ink-3);border-top:1px solid var(--paper-3);margin-top:12px;padding-top:10px;font-family:var(--mono);letter-spacing:.3px}
 .blocos{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
 .bloco{border:1.5px solid var(--paper-3);border-radius:var(--r);overflow:hidden;background:var(--paper);box-shadow:var(--sh);transition:border-color .15s}
 .bloco.sv{border-color:var(--green)}.bloco.sa{border-color:var(--blue)}
@@ -612,18 +613,19 @@ function pgProposta(){
       ['Fico a aguardar o seu feedback. Se houver algum ponto a ajustar, diga-me.', 'Fico a aguardar feedback...']
     ],'(sem fecho)','Outro fecho...') +
     mkBloco('bp-4','4','Despedida','v',[
-      ['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin', 'Com os melhores cumprimentos'],
-      ['Cumprimentos,\nHélder Melo | VPR · Leroy Merlin', 'Cumprimentos'],
-      ['Obrigado,\nHélder Melo | VPR · Leroy Merlin', 'Obrigado'],
-      ['Obrigado e bom dia,\nHélder Melo | VPR · Leroy Merlin', 'Obrigado e bom dia'],
-      ['Até breve,\nHélder Melo | VPR · Leroy Merlin', 'Até breve'],
-      ['Obrigado, fico a aguardar.\nHélder Melo | VPR · Leroy Merlin', 'Obrigado, fico a aguardar'],
-      ['Um abraço,\nHélder Melo | VPR · Leroy Merlin', 'Um abraço']
+      ['Com os melhores cumprimentos,', 'Com os melhores cumprimentos'],
+      ['Cumprimentos,', 'Cumprimentos'],
+      ['Obrigado,', 'Obrigado'],
+      ['Obrigado e bom dia,', 'Obrigado e bom dia'],
+      ['Até breve,', 'Até breve'],
+      ['Obrigado, fico a aguardar.', 'Obrigado, fico a aguardar'],
+      ['Um abraço,', 'Um abraço']
     ],'(sem despedida)','Outra despedida...') +
     '</div></div>' +
     '<div class="cstr-dir">' +
     '<div class="prev-lbl">Pré-visualização</div>' +
     '<div class="prev-box" id="p-prev"><span class="ph">Selecciona os blocos para construir a mensagem.</span></div>' +
+    '<div class="prev-assin" id="p-assin" style="display:none">Hélder Melo | VPR · Leroy Merlin</div>' +
     '<button class="btn-p v" onclick="pCopiarAssunto()">Copiar assunto</button>' +
     '<button class="btn-p v" onclick="pCopiar()">Copiar mensagem</button>' +
     '<button class="btn-p am" onclick="pGuardar()">📝 Guardar rascunho</button>' +
@@ -657,7 +659,9 @@ function pRender(){
   var b1=getBVal('bp-1'), b2=getBVal('bp-2'), b3=getBVal('bp-3'), b4=getBVal('bp-4');
   var prev=document.getElementById('p-prev'); if(!prev) return;
   if([b1,b2,b3,b4].every(function(v){ return v===undefined; })){
-    prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>'; return;
+    prev.innerHTML='<span class="ph">Selecciona os blocos para construir a mensagem.</span>';
+    var pa=document.getElementById('p-assin'); if(pa) pa.style.display='none';
+    return;
   }
   var sep = _pCanal==='email' ? '\n\n' : '\n';
   var pp  = [b1,b2,b3,b4].filter(function(v){ return v; }).map(function(v){ return fillD(v,d); });
@@ -676,7 +680,8 @@ function pCopiarAssunto(){
 function pCopiar(){
   var txt=document.getElementById('p-prev') ? document.getElementById('p-prev').innerText : '';
   if(!txt || txt.includes('Selecciona')) return;
-  navigator.clipboard.writeText(txt).then(function(){ toast('✓ Mensagem copiada!'); });
+  var full = txt + '\nHélder Melo | VPR · Leroy Merlin';
+  navigator.clipboard.writeText(full).then(function(){ toast('✓ Mensagem copiada!'); });
 }
 
 function pGuardar(){
@@ -779,15 +784,16 @@ function pgReporte(){
       ['Agradeço confirmação de nova data para garantir alinhamento com o cliente.','Agradeço confirmação de nova data.']
     ],'(sem pedido)','Outro pedido...') +
     mkBloco('rb-4','4','Despedida','v',[
-      ['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],
-      ['Obrigado pela atenção,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],
-      ['Obrigado pela colaboração,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela colaboração'],
-      ['Um abraço,\nHélder','Um abraço, Hélder']
+      ['Com os melhores cumprimentos,','Com os melhores cumprimentos'],
+      ['Obrigado pela atenção,','Obrigado pela atenção'],
+      ['Obrigado pela colaboração,','Obrigado pela colaboração'],
+      ['Um abraço,','Um abraço, Hélder']
     ],'(sem despedida)','Outra despedida...') +
     '</div></div>' +
     '<div class="cstr-dir">' +
     '<div class="prev-lbl">Pré-visualização</div>' +
     '<div class="prev-box" id="r-prev"><span class="ph">Preenche os dados e selecciona os blocos.</span></div>' +
+    '<div class="prev-assin" id="r-assin" style="display:none">Hélder Melo | VPR · Leroy Merlin</div>' +
     '<button class="btn-p v" onclick="rCopiarAssunto()">Copiar assunto</button>' +
     '<button class="btn-p v" onclick="rCopiar()">Copiar mensagem</button>' +
     '<button class="btn-p am" onclick="rGuardar()">📝 Guardar rascunho</button>' +
@@ -915,7 +921,9 @@ function rRender(){
 
   var prev=document.getElementById('r-prev'); if(!prev) return;
   var temAlgo=[b1,b2,b3,b4].some(function(v){ return v!==undefined; })||desc||probs.length||arts.length||refs.arr.length;
-  if(!temAlgo){ prev.innerHTML='<span class="ph">Preenche os dados e selecciona os blocos.</span>'; return; }
+  if(!temAlgo){ prev.innerHTML='<span class="ph">Preenche os dados e selecciona os blocos.</span>';
+    var ra=document.getElementById('r-assin'); if(ra) ra.style.display='none';
+    return; }
 
   // Assunto com urgência e PC/OS
   var assuntoBase = 'Situação em obra — '+(nome||'[nome]');
@@ -937,6 +945,7 @@ function rRender(){
     '<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-4);margin-bottom:3px">Assunto</div>' +
     '<div style="font-size:13px;font-weight:500;color:var(--ink)">'+_rAssunto+'</div></div>';
   prev.innerHTML=aHTML+'<span style="white-space:pre-wrap">'+pp.filter(Boolean).join('\n\n')+'</span>';
+  var ra=document.getElementById('r-assin'); if(ra) ra.style.display='block';
   memSave('reporte', R_MEM, ['rb-1','rb-2','rb-3','rb-4']);
 }
 
@@ -947,7 +956,7 @@ function rCopiar(){
   var prev=document.getElementById('r-prev');
   if(prev){ var span=prev.querySelector('span[style]'); txt=span?span.innerText:prev.innerText; }
   if(!txt){ toast('Nada para copiar'); return; }
-  navigator.clipboard.writeText(_rAssunto+'\n\n'+txt).then(function(){ toast('✓ Mensagem copiada!'); });
+  navigator.clipboard.writeText(_rAssunto+'\n\n'+txt+'\nHélder Melo | VPR · Leroy Merlin').then(function(){ toast('✓ Mensagem copiada!'); });
 }
 
 function rGuardar(){
@@ -1005,7 +1014,7 @@ function pgProcessuais(){
     mkBloco('bi-4','4','Estado do processo','a',[['Confirmo que o processo foi aceite e registado.','Confirmo que foi aceite e registado.'],['Já dei andamento a esta situação.','Já dei andamento a esta situação.'],['A situação está a ser tratada com prioridade.','A situação está a ser tratada com prioridade.']],'(sem estado)','Outro estado...') +
     mkBloco('bi-5','5','Próximo passo / Prazo','a',[['Assim que tiver novidades informo de imediato.','Informo assim que tiver novidades.'],['Aguardo a vossa resposta com brevidade.','Aguardo resposta com brevidade.'],['Solicito resposta até ao final do dia.','Solicito resposta até final do dia.']],'(sem prazo)','Outro prazo...') +
     mkBloco('bi-6','6','Disponibilidade','a',[['Estou disponível para qualquer esclarecimento.','Disponível para qualquer esclarecimento.'],['Qualquer dúvida é só dizer.','Qualquer dúvida é só dizer.']],'(sem disponibilidade)','Outra disponibilidade...') +
-    mkBloco('bi-7','7','Despedida','a',[['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Obrigado pela atenção,\nHélder Melo | VPR · Leroy Merlin','Obrigado pela atenção'],['Um abraço,\nHélder','Um abraço, Hélder']],'(sem despedida)','Outra despedida...') +
+    mkBloco('bi-7','7','Despedida','a',[['Com os melhores cumprimentos,','Com os melhores cumprimentos'],['Obrigado pela atenção,','Obrigado pela atenção'],['Um abraço,','Um abraço, Hélder']],'(sem despedida)','Outra despedida...') +
     '</div></div>' +
     '<div id="pr-cli" style="display:none">' +
     '<div class="sec-lbl">Dados</div>' +
@@ -1031,12 +1040,13 @@ function pgProcessuais(){
     mkBloco('bc-4','4','Próximo passo / Prazo','v',[['Assim que tiver novidades entro em contacto de imediato.','Entro em contacto assim que tiver novidades.'],['Dou-lhe feedback logo que possível.','Dou-lhe feedback logo que possível.'],['Ficamos a aguardar a sua confirmação para avançar.','Aguardamos a sua confirmação.']],'(sem prazo)','Outro prazo...') +
     mkBloco('bc-5','5','Disponibilidade','v',[['Estou disponível para qualquer dúvida ou esclarecimento.','Disponível para qualquer dúvida.'],['Qualquer dúvida ou ajuste, é só dizer.','Qualquer dúvida ou ajuste, é só dizer.']],'(sem disponibilidade)','Outra disponibilidade...') +
     mkBloco('bc-6','6','Agradecimento (opcional)','v',[['Obrigado pela sua compreensão.','Obrigado pela sua compreensão.'],['Obrigado pela sua paciência.','Obrigado pela sua paciência.'],['Obrigado pela confiança depositada.','Obrigado pela confiança depositada.']],'(sem agradecimento)','Outro agradecimento...') +
-    mkBloco('bc-7','7','Despedida','v',[['Com os melhores cumprimentos,\nHélder Melo | VPR · Leroy Merlin','Com os melhores cumprimentos'],['Até breve,\nHélder Melo | VPR · Leroy Merlin','Até breve'],['Um abraço,\nHélder','Um abraço, Hélder']],'(sem despedida)','Outra despedida...') +
+    mkBloco('bc-7','7','Despedida','v',[['Com os melhores cumprimentos,','Com os melhores cumprimentos'],['Até breve,','Até breve'],['Um abraço,','Um abraço, Hélder']],'(sem despedida)','Outra despedida...') +
     '</div></div>' +
     '</div>' +
     '<div class="cstr-dir">' +
     '<div class="prev-lbl">Pré-visualização</div>' +
     '<div class="prev-box" id="pr-prev"><span class="ph">Selecciona os blocos para construir a mensagem.</span></div>' +
+    '<div class="prev-assin" id="pr-assin" style="display:none">Hélder Melo | VPR · Leroy Merlin</div>' +
     '<button class="btn-p a" id="pr-btn-cop" onclick="prCopiar()">Copiar mensagem</button>' +
     '<button class="btn-p am" onclick="prGuardar()">📝 Guardar rascunho</button>' +
     '<button class="btn-s" onclick="prReset()">↺ Recomeçar</button>' +
@@ -1113,13 +1123,15 @@ function prRender(){
     if(c7) pp.push(c7);
   }
   prev.innerText=pp.filter(Boolean).join('\n\n');
+  var pra=document.getElementById('pr-assin'); if(pra) pra.style.display='block';
   memSave('processuais', PR_MEM, ['bi-1','bi-2','bi-3','bi-4','bi-5','bi-6','bi-7','bc-1','bc-2','bc-3','bc-4','bc-5','bc-6','bc-7']);
 }
 
 function prCopiar(){
   var txt=document.getElementById('pr-prev') ? document.getElementById('pr-prev').innerText : '';
   if(!txt||txt.includes('Selecciona')){ toast('Nada para copiar'); return; }
-  navigator.clipboard.writeText(txt).then(function(){ toast('✓ Mensagem copiada!'); });
+  var full = txt + '\nHélder Melo | VPR · Leroy Merlin';
+  navigator.clipboard.writeText(full).then(function(){ toast('✓ Mensagem copiada!'); });
 }
 
 function prGuardar(){
