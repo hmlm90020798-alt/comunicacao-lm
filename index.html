@@ -700,7 +700,7 @@ function pReset(){
 // ═══════════════════════════════════════════════════════
 
 var _rAid=0, _rAssunto='';
-var R_MEM = ['r-nome','r-trat','r-pc','r-os','r-desc'];
+var R_MEM = ['r-nome','r-trat','r-pc','r-os','r-desc','r-urgencia','r-ctx'];
 
 function pgReporte(){
   return '<div class="page-eyebrow">Módulo</div>' +
@@ -708,7 +708,7 @@ function pgReporte(){
     '<div class="page-sub">Reporta situações aos colegas com PC/OS, artigos e destinatários.</div>' +
     '<div class="cstr"><div class="cstr-esq">' +
     '<div class="sec-lbl">Dados do cliente</div>' +
-    '<div class="grid-2" style="margin-bottom:14px">' +
+    '<div class="grid-2" style="margin-bottom:10px">' +
     '<div class="campo" style="margin:0"><label class="campo-label">Nome do cliente</label><input class="inp" id="r-nome" placeholder="Ex: Marco" oninput="rRender()"></div>' +
     '<div class="campo" style="margin:0"><label class="campo-label">Tratamento</label>' +
     '<select class="inp" id="r-trat" onchange="rRender()">' +
@@ -722,7 +722,18 @@ function pgReporte(){
     '<div class="ref-card" id="rc-pc"><div class="ref-badge">PC · Projecto</div><div class="ref-desc">Identifica artigos e materiais</div><input class="ref-inp" id="r-pc" placeholder="Ex: 200153" oninput="rRefCard(\'pc\');rRender()"></div>' +
     '<div class="ref-card" id="rc-os"><div class="ref-badge">OS · Ordem de Serviço</div><div class="ref-desc">Identifica prestação de serviço técnico</div><input class="ref-inp" id="r-os" placeholder="Ex: 562232" oninput="rRefCard(\'os\');rRender()"></div>' +
     '</div>' +
-    '<div class="sec-lbl" style="margin-top:4px">Destinatários</div>' +
+    '<div class="sec-lbl" style="margin-top:4px">Urgência</div>' +
+    '<div class="grid-2" style="margin-bottom:14px">' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Nível</label>' +
+    '<select class="inp" id="r-urgencia" onchange="rRender()">' +
+    '<option value="">Normal</option>' +
+    '<option value="Urgente">🔴 Urgente</option>' +
+    '<option value="Muito urgente">🚨 Muito urgente</option>' +
+    '</select></div>' +
+    '<div class="campo" style="margin:0"><label class="campo-label">Contexto (opcional)</label>' +
+    '<input class="inp" id="r-ctx" placeholder="Ex: tem pais idosos a cargo..." oninput="rRender()"></div>' +
+    '</div>' +
+    '<div class="sec-lbl">Destinatários</div>' +
     '<div class="dest-wrap">' +
     '<div class="dest-hdr"><div class="dest-hdr-t">Selecciona os destinatários</div><button class="btn-gerir" onclick="modalCtcAbrir()">Gerir contactos</button></div>' +
     '<div class="dest-body"><div class="dest-lista" id="r-dest-lista"></div>' +
@@ -744,11 +755,15 @@ function pgReporte(){
       ['Verificou-se um atraso na execução de [tarefa/serviço].', 'Atraso na execução...']
     ],'(sem origem)','Outra origem...') +
     '</div>' +
-    '<div class="sec-lbl">Descrição do problema</div>' +
-    '<div class="campo"><textarea class="textarea" id="r-desc" placeholder="Descreve o problema..." oninput="rRender()" rows="4"></textarea></div>' +
-    '<div class="sec-lbl">Artigos envolvidos</div>' +
+    '<div class="sec-lbl">Descrição / contexto adicional</div>' +
+    '<div class="campo"><textarea class="textarea" id="r-desc" placeholder="Contexto adicional ou detalhes relevantes..." oninput="rRender()" rows="3"></textarea></div>' +
+    '<div class="sec-lbl">Problemas identificados</div>' +
     '<div style="background:var(--paper);border:1.5px solid var(--paper-3);border-radius:var(--r);padding:12px;margin-bottom:16px;box-shadow:var(--sh)">' +
-    '<div id="r-arts"></div><button class="btn-add" onclick="rAddArt()">+ Artigo</button></div>' +
+    '<div id="r-probs"></div>' +
+    '<button class="btn-add" onclick="rAddProb()">+ Problema</button></div>' +
+    '<div class="sec-lbl">Artigos / referências LM</div>' +
+    '<div style="background:var(--paper);border:1.5px solid var(--paper-3);border-radius:var(--r);padding:12px;margin-bottom:16px;box-shadow:var(--sh)">' +
+    '<div id="r-arts"></div><button class="btn-add" onclick="rAddArt()">+ Artigo / Ref. LM</button></div>' +
     '<div class="blocos">' +
     mkBloco('rb-3','3','O que precisas dos colegas','v',[
       ['Solicito a vossa indicação dos próximos passos e prazo para que possa informar o cliente.','Solicito indicação dos próximos passos e prazo.'],
@@ -781,10 +796,10 @@ function pgReporte(){
 }
 
 function rInit(){
-  _rAid=0; _rAssunto='';
+  _rAid=0; _rPid=0; _rAssunto='';
   memLoad('reporte', R_MEM, ['rb-1','rb-2','rb-3','rb-4']);
   rRenderDests();
-  rAddArt();
+  rAddProb();
   document.removeEventListener('ctcActualizado', rRenderDests);
   document.addEventListener('ctcActualizado', rRenderDests);
   setTimeout(rRender, 0);
@@ -802,13 +817,27 @@ function rGetRefs(){
   return {str: p.length ? ' ('+p.join(' · ')+')' : '', arr:p};
 }
 
+var _rPid=0;
+
+function rAddProb(){
+  var id=++_rPid;
+  var lista=document.getElementById('r-probs'); if(!lista) return;
+  var d=document.createElement('div');
+  d.className='prob-linha'; d.id='prob-'+id;
+  d.style.cssText='display:grid;grid-template-columns:1fr 130px 32px;gap:6px;margin-bottom:6px;align-items:center';
+  d.innerHTML='<input class="inp prob-desc" style="padding:7px 10px;font-size:12px" placeholder="Descrição do problema" oninput="rRender()">' +
+    '<input class="inp prob-ref" style="padding:7px 10px;font-size:12px" placeholder="Ref. LM (opcional)" oninput="rRender()">' +
+    '<button class="btn-del" onclick="document.getElementById(\'prob-'+id+'\').remove();rRender()">×</button>';
+  lista.appendChild(d);
+}
+
 function rAddArt(){
   var id=++_rAid;
   var lista=document.getElementById('r-arts'); if(!lista) return;
   var d=document.createElement('div');
   d.className='art-linha'; d.id='art-'+id;
-  d.innerHTML='<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Descrição do artigo" oninput="rRender()">' +
-    '<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Referência" oninput="rRender()">' +
+  d.innerHTML='<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Descrição do artigo / material" oninput="rRender()">' +
+    '<input class="inp" style="padding:7px 10px;font-size:12px" placeholder="Ref. LM" oninput="rRender()">' +
     '<button class="btn-del" onclick="document.getElementById(\'art-'+id+'\').remove();rRender()">×</button>';
   lista.appendChild(d);
 }
@@ -856,32 +885,54 @@ function rCopiarDest(tipo){
 }
 
 function rRender(){
-  var nome=document.getElementById('r-nome') ? document.getElementById('r-nome').value.trim() : '';
-  var trat=document.getElementById('r-trat') ? document.getElementById('r-trat').value : 'Sr.';
-  var desc=document.getElementById('r-desc') ? document.getElementById('r-desc').value.trim() : '';
-  var refs=rGetRefs();
-  var nc  =nomeCompleto(nome,trat);
-  var art =trat==='Da'?'a':'o';
-  var dart=trat==='Da'?'da':'do';
-  var d={NOME:nc, REFS:refs.str, ART:art, DART:dart};
+  var nome    = document.getElementById('r-nome') ? document.getElementById('r-nome').value.trim() : '';
+  var trat    = document.getElementById('r-trat') ? document.getElementById('r-trat').value : 'Sr.';
+  var desc    = document.getElementById('r-desc') ? document.getElementById('r-desc').value.trim() : '';
+  var urgencia= document.getElementById('r-urgencia') ? document.getElementById('r-urgencia').value : '';
+  var ctx     = document.getElementById('r-ctx') ? document.getElementById('r-ctx').value.trim() : '';
+  var refs    = rGetRefs();
+  var nc      = nomeCompleto(nome,trat);
+  var art     = trat==='Da'?'a':'o';
+  var dart    = trat==='Da'?'da':'do';
+  var d       = {NOME:nc, REFS:refs.str, ART:art, DART:dart};
   var b1=getBVal('rb-1'),b2=getBVal('rb-2'),b3=getBVal('rb-3'),b4=getBVal('rb-4');
+
+  // Problemas identificados
+  var probs=[];
+  document.querySelectorAll('.prob-linha').forEach(function(l){
+    var desc2 = l.querySelector('.prob-desc') ? l.querySelector('.prob-desc').value.trim() : '';
+    var ref   = l.querySelector('.prob-ref')  ? l.querySelector('.prob-ref').value.trim()  : '';
+    if(desc2) probs.push(ref ? desc2+' (LM '+ref+')' : desc2);
+  });
+
+  // Artigos/refs LM
   var arts=[];
   document.querySelectorAll('.art-linha').forEach(function(l){
     var d2=l.querySelectorAll('input')[0] ? l.querySelectorAll('input')[0].value.trim() : '';
     var r =l.querySelectorAll('input')[1] ? l.querySelectorAll('input')[1].value.trim() : '';
     if(d2||r) arts.push({desc:d2||'[descrição]',ref:r||'[ref]'});
   });
+
   var prev=document.getElementById('r-prev'); if(!prev) return;
-  var temAlgo=[b1,b2,b3,b4].some(function(v){ return v!==undefined; })||desc||arts.length||refs.arr.length;
+  var temAlgo=[b1,b2,b3,b4].some(function(v){ return v!==undefined; })||desc||probs.length||arts.length||refs.arr.length;
   if(!temAlgo){ prev.innerHTML='<span class="ph">Preenche os dados e selecciona os blocos.</span>'; return; }
-  _rAssunto='Situação em obra — '+(nome||'[nome]')+(refs.arr.length?' · '+refs.arr.join(' · '):'');
+
+  // Assunto com urgência e PC/OS
+  var assuntoBase = 'Situação em obra — '+(nome||'[nome]');
+  if(refs.arr.length) assuntoBase += ' | '+refs.arr.join(' / ');
+  if(urgencia) assuntoBase += ' | '+urgencia;
+  _rAssunto = assuntoBase;
+
   var pp=[];
   if(b1) pp.push(fillD(b1,d));
   if(b2) pp.push(fillD(b2,d));
+  if(ctx) pp.push(ctx);
   if(desc) pp.push(desc);
-  if(arts.length) pp.push('Artigos envolvidos:\n'+arts.map(function(a){ return '— '+a.desc+' · Ref: '+a.ref; }).join('\n'));
+  if(probs.length) pp.push(probs.map(function(p){ return '— '+p; }).join('\n'));
+  if(arts.length) pp.push('Artigos / referências:\n'+arts.map(function(a){ return '— '+a.desc+' · LM '+a.ref; }).join('\n'));
   if(b3) pp.push(fillD(b3,d));
   if(b4) pp.push(fillD(b4,d));
+
   var aHTML='<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--paper-3)">' +
     '<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-4);margin-bottom:3px">Assunto</div>' +
     '<div style="font-size:13px;font-weight:500;color:var(--ink)">'+_rAssunto+'</div></div>';
@@ -906,13 +957,15 @@ function rGuardar(){
 }
 
 function rReset(){
-  ['r-nome','r-pc','r-os','r-desc'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  ['r-nome','r-pc','r-os','r-desc','r-ctx'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  var ru=document.getElementById('r-urgencia'); if(ru) ru.value='';
+  var rp=document.getElementById('r-probs'); if(rp) rp.innerHTML='';
   var rt=document.getElementById('r-trat'); if(rt) rt.value='Sr.';
   ['rc-pc','rc-os'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove('tem'); });
   var arts=document.getElementById('r-arts'); if(arts) arts.innerHTML='';
-  _rAid=0; _rAssunto='';
+  _rAid=0; _rPid=0; _rAssunto='';
   resetBlocos(['rb-1','rb-2','rb-3','rb-4']);
-  rAddArt(); rRenderDests();
+  rAddProb(); rRenderDests();
   var prev=document.getElementById('r-prev');
   if(prev) prev.innerHTML='<span class="ph">Preenche os dados e selecciona os blocos.</span>';
   memClear('reporte');
